@@ -1,5 +1,7 @@
 package comms
 
+import "net"
+
 type Master struct {
 	slaves     map[*Slave]bool
 	broadcast  chan []byte
@@ -41,4 +43,22 @@ func (m *Master) Run() {
 			}
 		}
 	}
+}
+
+func (m *Master) Listen() {
+	ln, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		// handle error
+	}
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			// handle error
+		}
+		go handleConnection(conn)
+	}
+}
+
+func (m *Master) handleConnection() {
+	m.
 }
