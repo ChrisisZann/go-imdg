@@ -1,17 +1,38 @@
 package main
 
 import (
-	"bufio"
+	"flag"
 	"fmt"
-	"net"
+	"go-imdg/comms"
 )
 
+var cfgFile = flag.String("c", "config.json", "configuration file")
+
 func main() {
-	fmt.Println("Node started!!")
-	conn, err := net.Dial("tcp", "golang.org:80")
-	if err != nil {
-		// handle error
+
+	fmt.Println("Node starting...")
+
+	var nodeType = flag.String("type", "slave", "select node type: master or slave")
+	flag.Parse()
+
+	switch *nodeType {
+	case "master":
+		master := comms.NewMaster("localhost", "3333")
+
+		go master.Run()
+		master.Listen()
+
+	case "slave":
+		s := comms.NewSlave("localhost:3333", "s2", "localhost", "3335")
+
+		go s.Run()
+		go s.Listen()
+
+		var message string
+		for {
+			fmt.Print("Enter message:")
+			fmt.Scan(&message)
+			s.Send <- []byte(message)
+		}
 	}
-	fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
-	status, err := bufio.NewReader(conn).ReadString('\n')
 }
