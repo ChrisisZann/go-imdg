@@ -1,68 +1,74 @@
 package comms
 
-import "log"
+// import (
+// 	"fmt"
+// 	"log"
+// )
 
-type protocolMSG int
+// type protocolMSG int
 
-const (
-	portRequest protocolMSG = iota
-	dataRequest
-	finACK
-	done
-	status
-	success
-	failure
-)
+// const (
+// 	portRequest protocolMSG = iota
+// 	dataRequest
+// 	finACK
+// 	done
+// 	status
+// 	success
+// 	failure
+// 	new_message
+// )
 
-type slaveState int
+// type slaveState int
 
-const (
-	initialize slaveState = iota
-	startListening
-	runLoop
-	waiting
-	fatal
-)
+// const (
+// 	initialize slaveState = iota
+// 	startListening
+// 	runLoop
+// 	waiting
+// 	fatal
+// )
 
-func (s *Slave) protocolFSM() {
-	currentState := s.state
-	var nextState slaveState
-	for {
-		select {
-		case event := <-s.stateMSG:
-			switch currentState {
+// func (s *Slave) protocolFSM() {
+// 	// currentState := s.curState
+// 	for {
+// 		select {
+// 		case event := <-s.stateMSG:
 
-			case initialize:
-				switch event {
-				case success:
-					nextState = startListening
-				case failure:
-					nextState = fatal
-				}
+// 			switch s.curState {
 
-			case startListening:
-				switch event {
-				case success:
-					nextState = runLoop
-				case failure:
-					nextState = fatal
-				}
+// 			case initialize:
+// 				switch event {
+// 				case success:
+// 					s.nxtState = startListening
+// 				case failure:
+// 					s.nxtState = fatal
+// 				}
 
-			case runLoop:
-				switch event {
-				case success:
-					nextState = waiting
-				case failure:
-					nextState = fatal
-				}
+// 			case startListening:
+// 				switch event {
+// 				case success:
+// 					s.nxtState = runLoop
+// 				case failure:
+// 					s.nxtState = fatal
+// 				}
 
-			case fatal:
-				log.Fatal("Fatal : Process failed")
+// 			case runLoop:
+// 				switch event {
+// 				case success:
+// 					s.nxtState = waiting
+// 				case failure:
+// 					s.nxtState = fatal
+// 				case new_message:
+// 				}
 
-			default:
-				log.Println("Unknown command")
-			}
-		}
-		s.state = nextState
-	}
-}
+// 			case fatal:
+// 				log.Fatal("Fatal : Process failed")
+
+// 			default:
+// 				log.Println("Unknown state")
+// 			}
+// 		}
+// 		s.curState = s.nxtState
+// 		fmt.Println("New state", s.curState)
+// 	}
+// }

@@ -12,17 +12,17 @@ func main() {
 
 	fmt.Println("Node starting...")
 
-	var nodeType = flag.String("type", "slave", "select node type: master or slave")
+	var nodeType = flag.String("type", "Slave", "select node type: master or Slave")
 	flag.Parse()
 
 	switch *nodeType {
 	case "master":
 		master := comms.NewMaster("localhost", "3333")
 
-		go master.Run()
+		// go master.Run()
 		master.Listen()
 
-	case "slave":
+	case "Slave":
 		s := comms.NewSlave("localhost:3333", "s2", "localhost", "3335")
 
 		go s.Run()
@@ -32,7 +32,8 @@ func main() {
 		for {
 			fmt.Print("Enter message:")
 			fmt.Scan(&message)
-			s.Send <- []byte(message)
+			s.PrepareMsg("0:" + message)
+			s.SendMsg()
 		}
 	}
 }

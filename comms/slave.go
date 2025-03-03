@@ -9,52 +9,40 @@ import (
 )
 
 type Slave struct {
-	// master *Master
-	conn  net.Conn
-	mAddr string
+	mAddr nodeAddr
+	addr  nodeAddr
 
-	listenHost string
-	listenPort string
+	header string
 
-	// Buffered channel of outbound messages.
-	Send       chan []byte
-	Receive    chan *message
-	connStatus bool
+	Send    chan *message
+	Receive chan *message
 
-	header []byte
-
-	state slaveState
-
-	stateMSG chan protocolMSG
+	msg *message
 }
 
-func (s Slave) String() string {
-	return s.mAddr + "|" + strconv.FormatBool(s.connStatus) + "|" + string(s.header)
-}
-
-func NewSlave(ma, name, lh, lp string) *Slave {
+func NewSlave(master, name, h, p string) *Slave {
 	return &Slave{
-		mAddr:      ma,
-		listenHost: lh,
-		listenPort: lp,
-		connStatus: false,
-		header:     []byte(lh + ";" + lp + ";" + strconv.Itoa(os.Getpid()) + ";"),
-		Send:       make(chan []byte, 256),
-		Receive:    make(chan *message),
-		stateMSG:   make(chan protocolMSG),
+		mAddr:   NewNodeAddr("tcp", master),
+		addr:    NewNodeAddr("tcp", h+":"+p),
+		header:  h + ";" + p + ";" + strconv.Itoa(os.Getpid()) + ";",
+		Send:    make(chan *message),
+		Receive: make(chan *message),
 	}
 }
 
-func (s *Slave) Connect() {
-	c, err := net.Dial("tcp", s.mAddr)
-	if err != nil {
-		log.Fatal("Failed to connect to "+s.mAddr, err)
+func (s *Slave) PrepareMsg(inputS string) {
+
+	s.msg = &message{
+		source:      s.addr,
+		suid:        os.Getpid(),
+		destination: s.mAddr,
+		respPort:    "3334",
+		payload:     ParsePayload(inputS),
 	}
-	s.conn = c
 }
 
-func (s *Slave) StartFSM() {
-	go s.protocolFSM()
+func (s *Slave) SendMsg() {
+	s.Send <- s.msg
 }
 
 func (s *Slave) Run() {
@@ -62,28 +50,32 @@ func (s *Slave) Run() {
 	for {
 		select {
 		case message := <-s.Send:
-			s.Connect()
-			_, err := s.conn.Write(append(s.header, message...))
+			conn, err := net.Dial("tcp", s.mAddr.String())
+			if err != nil {
+				log.Fatal("Failed to connect to "+s.mAddr.String(), err)
+			}
+
+			_, err = conn.Write([]byte(message.Compile()))
 			if err != nil {
 				log.Fatal("Failed to write")
 			}
-			s.conn.Close()
+			conn.Close()
+
 		case message := <-s.Receive:
 			fmt.Println("===================================================")
 			fmt.Printf("Decoded received message:\n%s\n", *message)
 			fmt.Println("===================================================")
+			// s.stateMSG <- new_message
 		}
 	}
 }
 
 func (s *Slave) Listen() {
-	ln, err := net.Listen("tcp", s.listenHost+":"+s.listenPort)
+	ln, err := net.Listen("tcp", s.addr.String())
 	if err != nil {
 		panic(err)
 	}
 	defer ln.Close()
-
-	s.stateMSG <- success
 
 	for {
 		conn, err := ln.Accept()
