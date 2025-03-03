@@ -17,23 +17,25 @@ func main() {
 
 	switch *nodeType {
 	case "master":
+		fmt.Println("Starting new master...")
 		master := comms.NewMaster("localhost", "3333")
-
-		// go master.Run()
-		master.Listen()
+		master.Start()
 
 	case "Slave":
-		s := comms.NewSlave("localhost:3333", "s2", "localhost", "3335")
+		fmt.Println("Starting new slave...")
+		// slave := comms.NewSlave("localhost:3333", "s1", "localhost", "3334")
+		slave := comms.NewSlave("localhost:3333", "s2", "localhost", "3335")
 
-		go s.Run()
-		go s.Listen()
+		slave.Start()
 
 		var message string
 		for {
 			fmt.Print("Enter message:")
 			fmt.Scan(&message)
-			s.PrepareMsg("0:" + message)
-			s.SendMsg()
+			// NewPayload(message, payloadType.def)
+
+			slave.PrepareMsg("3:" + message)
+			slave.SendMsg()
 		}
 	}
 }

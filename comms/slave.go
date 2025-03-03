@@ -31,12 +31,10 @@ func NewSlave(master, name, h, p string) *Slave {
 }
 
 func (s *Slave) PrepareMsg(inputS string) {
-
 	s.msg = &message{
 		source:      s.addr,
 		suid:        os.Getpid(),
 		destination: s.mAddr,
-		respPort:    "3334",
 		payload:     ParsePayload(inputS),
 	}
 }
@@ -45,7 +43,12 @@ func (s *Slave) SendMsg() {
 	s.Send <- s.msg
 }
 
-func (s *Slave) Run() {
+func (s *Slave) Start() {
+	go s.RunComms()
+	go s.Listen()
+}
+
+func (s *Slave) RunComms() {
 
 	for {
 		select {
@@ -90,7 +93,6 @@ func (s *Slave) handleConnection(conn net.Conn) {
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 
-	// Read the incoming connection into the buffer.
 	_, err := conn.Read(buf)
 	if err != nil {
 		fmt.Println("Error reading:", err.Error())

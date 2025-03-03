@@ -8,6 +8,7 @@ type nodeAddr struct {
 func (m nodeAddr) Network() string {
 	return m.network
 }
+
 func (m nodeAddr) String() string {
 	return m.addr
 }
