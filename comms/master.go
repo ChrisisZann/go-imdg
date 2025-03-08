@@ -19,6 +19,18 @@ type Master struct {
 	addr nodeAddr
 }
 
+// func NewMasterCfg(n *Node) *Master {
+// 	return &Master{
+// 		workers:    make(map[*mWorker]bool),
+// 		broadcast:  make(chan string),
+// 		register:   make(chan *mWorker),
+// 		unregister: make(chan *mWorker),
+// 		directMsg:  make(chan *message),
+// 		addr:       NewNodeAddr("tcp", "localhost:"+n.LPort),
+// 		node:       n,
+// 	}
+// }
+
 func NewMaster(h, p string) *Master {
 	return &Master{
 		workers:    make(map[*mWorker]bool),
@@ -59,6 +71,7 @@ func (m *Master) PrepareMsg(p *Payload, ms *mWorker) *message {
 }
 
 func (m *Master) Start() {
+
 	go m.RunComms()
 	m.Listen()
 }
