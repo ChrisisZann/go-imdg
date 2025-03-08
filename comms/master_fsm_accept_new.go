@@ -47,13 +47,13 @@ func NewConnFsm() *connFSM {
 	}
 }
 
-func (s *mSlave) Start(register, unregister chan<- *mSlave, directMsg chan<- *message) {
+func (s *mWorker) Start(register, unregister chan<- *mWorker, directMsg chan<- *message) {
 	go s.ListenEvents()
 	go s.ListenFSM(register, unregister, directMsg)
 }
 
 // Decode FSM input/signals
-func (s *mSlave) ListenEvents() {
+func (s *mWorker) ListenEvents() {
 
 	for {
 		select {
@@ -116,7 +116,7 @@ func (s *mSlave) ListenEvents() {
 }
 
 // Receives new state and trigger fuctionality
-func (s *mSlave) ListenFSM(register, unregister chan<- *mSlave, directMsg chan<- *message) {
+func (s *mWorker) ListenFSM(register, unregister chan<- *mWorker, directMsg chan<- *message) {
 
 	for {
 		select {

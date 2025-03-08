@@ -9,10 +9,10 @@ import (
 )
 
 type Master struct {
-	slaves     map[*mSlave]bool
+	workers    map[*mWorker]bool
 	broadcast  chan string
-	register   chan *mSlave
-	unregister chan *mSlave
+	register   chan *mWorker
+	unregister chan *mWorker
 	directMsg  chan *message
 
 	// comms
@@ -21,17 +21,17 @@ type Master struct {
 
 func NewMaster(h, p string) *Master {
 	return &Master{
-		slaves:     make(map[*mSlave]bool),
+		workers:    make(map[*mWorker]bool),
 		broadcast:  make(chan string),
-		register:   make(chan *mSlave),
-		unregister: make(chan *mSlave),
+		register:   make(chan *mWorker),
+		unregister: make(chan *mWorker),
 		directMsg:  make(chan *message),
 		addr:       NewNodeAddr("tcp", h+":"+p),
 	}
 }
 
 func (m Master) checkConnected(testUID int) bool {
-	for connection := range m.slaves {
+	for connection := range m.workers {
 		if connection.uid == testUID {
 			return true
 		}
@@ -39,17 +39,17 @@ func (m Master) checkConnected(testUID int) bool {
 	return false
 }
 
-func (m Master) findConnected(testUID int) *mSlave {
-	for connection := range m.slaves {
+func (m Master) findConnected(testUID int) *mWorker {
+	for connection := range m.workers {
 		if connection.uid == testUID {
 			return connection
 		}
 	}
-	fmt.Println("Didnt find slave connection")
+	fmt.Println("Didnt find worker connection")
 	return nil
 }
 
-func (m *Master) PrepareMsg(p *Payload, ms *mSlave) *message {
+func (m *Master) PrepareMsg(p *Payload, ms *mWorker) *message {
 	return &message{
 		source:      m.addr,
 		suid:        os.Getpid(),
@@ -67,29 +67,29 @@ func (m *Master) RunComms() {
 	for {
 		select {
 
-		case slave := <-m.register:
+		case worker := <-m.register:
 
-			m.slaves[slave] = true
-			fmt.Println("Saved Slave: ", m.slaves[slave])
-			// slave.send("PORT")
-			// m.slaves[slave]
+			m.workers[worker] = true
+			fmt.Println("Saved Worker: ", m.workers[worker])
+			// worker.send("PORT")
+			// m.workers[worker]
 
-		case slave := <-m.unregister:
-			fmt.Println("Deleting slave: ", slave)
-			fmt.Printf("Slaves count before:%d\n", len(m.slaves))
+		case worker := <-m.unregister:
+			fmt.Println("Deleting worker: ", worker)
+			fmt.Printf("Workers count before:%d\n", len(m.workers))
 
-			if _, ok := m.slaves[slave]; ok {
+			if _, ok := m.workers[worker]; ok {
 				fmt.Println("i enter the if")
-				delete(m.slaves, slave)
-				// close(slave.Send)
+				delete(m.workers, worker)
+				// close(worker.Send)
 			}
-			fmt.Printf("Slaves count after:%d\n", len(m.slaves))
+			fmt.Printf("Workers count after:%d\n", len(m.workers))
 
 		case message := <-m.directMsg:
 			fmt.Println("received DM:", message)
 
 		case message := <-m.broadcast:
-			for s := range m.slaves {
+			for s := range m.workers {
 				s.send([]byte(s.PrepareMsg(NewPayload(message, cmd)).Compile()))
 			}
 		}
@@ -145,21 +145,21 @@ func (m *Master) handleConnection(conn net.Conn) {
 	}
 
 	// Check
-	if oldSlave := m.findConnected(msg.suid); oldSlave == nil {
-		slave := &mSlave{
+	if oldWorker := m.findConnected(msg.suid); oldWorker == nil {
+		worker := &mWorker{
 			uid:   msg.suid,
 			addr:  msg.source,
 			maddr: m.addr,
 			fsm:   NewConnFsm(),
 		}
-		slave.Start(m.register, m.unregister, m.directMsg)
-		slave.fsm.newEvent <- open
-		m.broadcast <- "New Slave Added "
-		// m.broadcast <- "NewSlaveAdded" + slave.String()
+		worker.Start(m.register, m.unregister, m.directMsg)
+		worker.fsm.newEvent <- open
+		m.broadcast <- "New Worker Added "
+		// m.broadcast <- "NewWorkerAdded" + worker.String()
 
 	} else {
 		fmt.Println("Already connected")
-		oldSlave.fsm.newEvent <- wait
+		oldWorker.fsm.newEvent <- wait
 	}
 
 	fmt.Println("===================================================")

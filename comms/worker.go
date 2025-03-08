@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-type Slave struct {
+type Worker struct {
 	mAddr nodeAddr
 	addr  nodeAddr
 
@@ -20,8 +20,8 @@ type Slave struct {
 	msg *message
 }
 
-func NewSlave(master, name, h, p string) *Slave {
-	return &Slave{
+func NewWorker(master, name, h, p string) *Worker {
+	return &Worker{
 		mAddr:   NewNodeAddr("tcp", master),
 		addr:    NewNodeAddr("tcp", h+":"+p),
 		header:  h + ";" + p + ";" + strconv.Itoa(os.Getpid()) + ";",
@@ -30,7 +30,7 @@ func NewSlave(master, name, h, p string) *Slave {
 	}
 }
 
-func (s *Slave) PrepareMsg(inputS string) {
+func (s *Worker) PrepareMsg(inputS string) {
 	s.msg = &message{
 		source:      s.addr,
 		suid:        os.Getpid(),
@@ -39,16 +39,16 @@ func (s *Slave) PrepareMsg(inputS string) {
 	}
 }
 
-func (s *Slave) SendMsg() {
+func (s *Worker) SendMsg() {
 	s.Send <- s.msg
 }
 
-func (s *Slave) Start() {
+func (s *Worker) Start() {
 	go s.RunComms()
 	go s.Listen()
 }
 
-func (s *Slave) RunComms() {
+func (s *Worker) RunComms() {
 
 	for {
 		select {
@@ -73,7 +73,7 @@ func (s *Slave) RunComms() {
 	}
 }
 
-func (s *Slave) Listen() {
+func (s *Worker) Listen() {
 	ln, err := net.Listen("tcp", s.addr.String())
 	if err != nil {
 		panic(err)
@@ -89,7 +89,7 @@ func (s *Slave) Listen() {
 	}
 }
 
-func (s *Slave) handleConnection(conn net.Conn) {
+func (s *Worker) handleConnection(conn net.Conn) {
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 

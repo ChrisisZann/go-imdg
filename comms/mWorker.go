@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-type mSlave struct {
+type mWorker struct {
 	uid   int
 	addr  nodeAddr
 	maddr nodeAddr
@@ -15,11 +15,11 @@ type mSlave struct {
 	fsm *connFSM
 }
 
-func (s mSlave) String() string {
+func (s mWorker) String() string {
 	return strconv.Itoa(s.uid) + "?" + s.addr.String()
 }
 
-func (ms *mSlave) PrepareMsg(p *Payload) *message {
+func (ms *mWorker) PrepareMsg(p *Payload) *message {
 	return &message{
 		source:      ms.maddr,
 		suid:        os.Getpid(),
@@ -28,7 +28,7 @@ func (ms *mSlave) PrepareMsg(p *Payload) *message {
 	}
 }
 
-func (s *mSlave) send(msg []byte) {
+func (s *mWorker) send(msg []byte) {
 	c, err := net.Dial("tcp", s.addr.String())
 	if err != nil {
 		log.Fatal("Failed to connect to "+s.addr.String(), err)
