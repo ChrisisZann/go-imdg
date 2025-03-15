@@ -16,6 +16,15 @@ type NodeCfg struct {
 	MasterConn string
 }
 
+func readString(input interface{}) string {
+	nt, ok := input.(string)
+	if !ok {
+		log.Fatal("node_type is not a string", ok)
+		return ""
+	}
+	return nt
+}
+
 func LoadConfig(cfgFileName string) (NodeCfg, error) {
 	var tempCfg NodeCfg
 	cfgData, err := os.ReadFile(cfgFileName)
@@ -26,15 +35,8 @@ func LoadConfig(cfgFileName string) (NodeCfg, error) {
 	var jsonMap map[string]interface{}
 	json.Unmarshal(cfgData, &jsonMap)
 
-	ln, ok := jsonMap["log_name"].(string)
-	if !ok {
-		log.Fatal("log_name is not a string", ok)
-	}
-
-	ld, ok := jsonMap["log_dir"].(string)
-	if !ok {
-		log.Fatal("log_file is not a string", ok)
-	}
+	ln := readString(jsonMap["log_name"])
+	ld := readString(jsonMap["log_dir"])
 
 	err = os.MkdirAll(ld, 0755)
 	if err != nil {
@@ -46,25 +48,11 @@ func LoadConfig(cfgFileName string) (NodeCfg, error) {
 	}
 	tempCfg.LogFile = logFile
 
-	nt, ok := jsonMap["node_type"].(string)
-	if !ok {
-		log.Fatal("node_type is not a string", ok)
-	}
-	tempCfg.NodeType = nt
+	tempCfg.NodeType = readString(jsonMap["node_type"])
+	tempCfg.Port = readString(jsonMap["listening_port"])
+	tempCfg.Name = readString(jsonMap["node_name"])
 
-	lp, ok := jsonMap["listening_port"].(string)
-	if !ok {
-		log.Fatal("listening_port is not a string", ok)
-	}
-	tempCfg.Port = lp
-
-	nn, ok := jsonMap["node_name"].(string)
-	if !ok {
-		log.Fatal("log_file is not a string", ok)
-	}
-	tempCfg.Name = nn
-
-	if strings.Compare(nt, "worker") == 0 {
+	if strings.Compare(tempCfg.NodeType, "worker") == 0 {
 		mc, ok := jsonMap["master_conn"].(string)
 		if !ok {
 			log.Fatal("log_file is not a string", ok)
