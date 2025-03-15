@@ -1,7 +1,7 @@
 {
     "node_type":"master",
     "listening_port":"3333",
-    "log_dir": "/Users/yippee/macosWorkspace/GO/go-imdg/var/log/",
+    "log_dir": "./var/log/",
     "log_name": "master",
     "node_name":"m1",
     "master_conn":"placeholder"

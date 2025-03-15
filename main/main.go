@@ -22,15 +22,15 @@ func main() {
 	testCfg := node.New(*cfgFile)
 
 	if strings.Compare(testCfg.NodeType, "master") == 0 {
-		fmt.Println("Starting new master...")
+		testCfg.Logger.Println("Starting new master...")
 		master := comms.NewMaster("localhost", testCfg.LPort)
 		master.Start()
 
 	} else if strings.Compare(testCfg.NodeType, "worker") == 0 {
-		fmt.Println("Starting new worker... ")
+		testCfg.Logger.Println("Starting new worker... ")
 		worker := comms.NewWorker(testCfg.MasterConn, testCfg.Name, "localhost", testCfg.LPort)
 
-		fmt.Println("new worker:", worker)
+		testCfg.Logger.Println("new worker:", worker)
 
 		worker.Start()
 
@@ -64,10 +64,10 @@ func main() {
 		s.Save([]byte("testing14"))
 
 		for i := 0; i < len(s.Page); i++ {
-			fmt.Println("Reading:", string(s.Read(i)))
+			testCfg.Logger.Println("Reading:", string(s.Read(i)))
 		}
 
-		fmt.Println("Page:", s)
+		testCfg.Logger.Println("Page:", s)
 
 	} else {
 		log.Panicln("Bad node type")

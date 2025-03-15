@@ -83,7 +83,7 @@ func (p Payload) String() string {
 
 func (p Payload) Compile() (string, error) {
 	if !p.validate() {
-		return "", errors.New("Failed to compile payload validations")
+		return "", errors.New("failed to compile payload validations")
 	}
 	return p.ptype.String() + ":" + p.data, nil
 	// return []byte(p.ptype.String() + p.delim + p.data), nil

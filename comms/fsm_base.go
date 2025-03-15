@@ -3,19 +3,19 @@ package comms
 type connState int
 
 const (
-	notConnected connState = iota
-	validateNewConn
-	connected
+	disconnected connState = iota
+	connecting
+	listening
 )
 
 func (cs connState) String() string {
 	switch cs {
-	case notConnected:
-		return "notConnected"
-	case validateNewConn:
-		return "validateNewConn"
-	case connected:
-		return "connected"
+	case disconnected:
+		return "disconnected"
+	case connecting:
+		return "connecting"
+	case listening:
+		return "listening"
 	}
 	return "error - bad connState"
 }
@@ -39,7 +39,7 @@ type connControl struct {
 
 func NewConnFsm() *connControl {
 	return &connControl{
-		curState: notConnected,
+		curState: disconnected,
 		nxtState: make(chan connState),
 		newEvent: make(chan varFSM),
 	}

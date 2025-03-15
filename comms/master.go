@@ -171,7 +171,7 @@ func (m *Master) handleConnection(conn net.Conn) {
 		// m.broadcast <- "NewWorkerAdded" + worker.String()
 
 	} else {
-		fmt.Println("Already connected")
+		fmt.Println("Already listening")
 		oldWorker.fsm.newEvent <- wait
 	}
 

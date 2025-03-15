@@ -6,6 +6,8 @@ import (
 	"strconv"
 )
 
+//Dummy store for testing
+
 const PAGE_SIZE = 10
 const LINE_SIZE = 50
 
