@@ -18,6 +18,8 @@ type Worker struct {
 	Receive chan *message
 
 	msg *message
+
+	fsm *connControl
 }
 
 func NewWorker(master, name, h, p string) *Worker {

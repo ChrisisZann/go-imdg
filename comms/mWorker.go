@@ -12,7 +12,7 @@ type mWorker struct {
 	addr  nodeAddr
 	maddr nodeAddr
 
-	fsm *connFSM
+	fsm *connControl
 }
 
 func (s mWorker) String() string {

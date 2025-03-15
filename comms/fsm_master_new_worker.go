@@ -2,51 +2,6 @@ package comms
 
 import "fmt"
 
-type connState int
-
-const (
-	notConnected connState = iota
-	validateNewConn
-	connected
-)
-
-func (cs connState) String() string {
-	switch cs {
-	case notConnected:
-		return "notConnected"
-	case validateNewConn:
-		return "validateNewConn"
-	case connected:
-		return "connected"
-	}
-	return "error - bad connState"
-}
-
-type varFSM int
-
-const (
-	accept varFSM = iota
-	failed
-	open
-	close
-	wait
-	send
-)
-
-type connFSM struct {
-	curState connState
-	nxtState chan connState
-	newEvent chan varFSM
-}
-
-func NewConnFsm() *connFSM {
-	return &connFSM{
-		curState: notConnected,
-		nxtState: make(chan connState),
-		newEvent: make(chan varFSM),
-	}
-}
-
 func (s *mWorker) Start(register, unregister chan<- *mWorker, directMsg chan<- *message) {
 	go s.ListenEvents()
 	go s.ListenFSM(register, unregister, directMsg)

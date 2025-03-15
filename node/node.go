@@ -6,6 +6,9 @@ import (
 	"sync"
 )
 
+var instance *Node
+var once sync.Once
+
 type Node struct {
 	Logger     *log.Logger
 	NodeType   string
@@ -20,19 +23,7 @@ func New(ncfg string) *Node {
 		return nil
 	}
 	return GetInstance(inputConfig)
-
-	// return GetInstance(func(s string) NodeCfg {
-	// 	inputConfig, err := LoadConfig(s)
-	// 	if err != nil {
-	// 		return nil
-	// 	}
-	// 	return inputConfig
-	// }(ncfg))
-
 }
-
-var instance *Node
-var once sync.Once
 
 func GetInstance(ncfg config.NodeCfg) *Node {
 	once.Do(func() {
