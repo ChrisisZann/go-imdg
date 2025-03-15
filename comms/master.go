@@ -158,6 +158,7 @@ func (m *Master) handleConnection(conn net.Conn) {
 	}
 
 	// Check
+	// TODO: Move to FSM
 	if oldWorker := m.findConnected(msg.suid); oldWorker == nil {
 		worker := &mWorker{
 			uid:   msg.suid,
