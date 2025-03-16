@@ -6,14 +6,35 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 )
+
+var instance *NodeCfg
+var once sync.Once
 
 type NodeCfg struct {
 	LogFile    *os.File
+	Logger     *log.Logger
 	NodeType   string
-	Port       string
+	Hostname   string
+	LPort      string
 	Name       string
 	MasterConn string
+}
+
+func New(ncfg string) *NodeCfg {
+	inputConfig, err := LoadConfig(ncfg)
+	if err != nil {
+		return nil
+	}
+	return GetInstance(inputConfig)
+}
+
+func GetInstance(ncfg NodeCfg) *NodeCfg {
+	once.Do(func() {
+		instance = &ncfg
+	})
+	return instance
 }
 
 func readString(input interface{}) string {
@@ -49,8 +70,10 @@ func LoadConfig(cfgFileName string) (NodeCfg, error) {
 	tempCfg.LogFile = logFile
 
 	tempCfg.NodeType = readString(jsonMap["node_type"])
-	tempCfg.Port = readString(jsonMap["listening_port"])
+	tempCfg.Hostname = readString(jsonMap["hostname"])
+	tempCfg.LPort = readString(jsonMap["listening_port"])
 	tempCfg.Name = readString(jsonMap["node_name"])
+	tempCfg.Logger = log.New(logFile, "", log.Ldate|log.Ltime|log.Lshortfile)
 
 	if strings.Compare(tempCfg.NodeType, "worker") == 0 {
 		mc, ok := jsonMap["master_conn"].(string)

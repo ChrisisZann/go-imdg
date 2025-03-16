@@ -1,7 +1,9 @@
 package comms
 
 import (
+	"bytes"
 	"fmt"
+	"go-imdg/config"
 	"log"
 	"net"
 	"os"
@@ -15,40 +17,24 @@ type Master struct {
 	unregister chan *mWorker
 	directMsg  chan *message
 
+	// embed Node struct
+	config.NodeCfg
+
 	// comms
-	addr nodeAddr
+	addr NodeAddr
 }
 
-// func NewMasterCfg(n *Node) *Master {
-// 	return &Master{
-// 		workers:    make(map[*mWorker]bool),
-// 		broadcast:  make(chan string),
-// 		register:   make(chan *mWorker),
-// 		unregister: make(chan *mWorker),
-// 		directMsg:  make(chan *message),
-// 		addr:       NewNodeAddr("tcp", "localhost:"+n.LPort),
-// 		node:       n,
-// 	}
-// }
-
-func NewMaster(h, p string) *Master {
+func NewMaster(cfg *config.NodeCfg) *Master {
+	cfg.Logger.Println(cfg.Hostname + ":" + cfg.LPort)
 	return &Master{
 		workers:    make(map[*mWorker]bool),
 		broadcast:  make(chan string),
 		register:   make(chan *mWorker),
 		unregister: make(chan *mWorker),
 		directMsg:  make(chan *message),
-		addr:       NewNodeAddr("tcp", h+":"+p),
+		addr:       NewNodeAddr("tcp", cfg.Hostname+":"+cfg.LPort),
+		NodeCfg:    *cfg,
 	}
-}
-
-func (m Master) checkConnected(testUID int) bool {
-	for connection := range m.workers {
-		if connection.uid == testUID {
-			return true
-		}
-	}
-	return false
 }
 
 func (m Master) findConnected(testUID int) *mWorker {
@@ -57,11 +43,12 @@ func (m Master) findConnected(testUID int) *mWorker {
 			return connection
 		}
 	}
-	fmt.Println("Didnt find worker connection")
+	m.Logger.Println("ERROR - Didnt find existing worker in pool")
 	return nil
 }
 
 func (m *Master) PrepareMsg(p *Payload, ms *mWorker) *message {
+
 	return &message{
 		source:      m.addr,
 		suid:        os.Getpid(),
@@ -83,23 +70,41 @@ func (m *Master) RunComms() {
 		case worker := <-m.register:
 
 			m.workers[worker] = true
-			fmt.Println("Saved Worker: ", m.workers[worker])
+			m.Logger.Println("Worker Added in pool: ", m.workers[worker])
 			// worker.send("PORT")
 			// m.workers[worker]
 
 		case worker := <-m.unregister:
-			fmt.Println("Deleting worker: ", worker)
-			fmt.Printf("Workers count before:%d\n", len(m.workers))
+			m.Logger.Println("Deleting worker: ", worker)
 
 			if _, ok := m.workers[worker]; ok {
-				fmt.Println("i enter the if")
+				m.Logger.Println("i enter the if")
 				delete(m.workers, worker)
 				// close(worker.Send)
 			}
-			fmt.Printf("Workers count after:%d\n", len(m.workers))
+			m.Logger.Println("Remaining Worker count :", len(m.workers))
 
 		case message := <-m.directMsg:
-			fmt.Println("received DM:", message)
+			m.Logger.Println("received DM:", message)
+			if existingWorker := m.findConnected(message.suid); existingWorker == nil {
+				worker := &mWorker{
+					uid:    message.suid,
+					addr:   message.source,
+					maddr:  m.addr,
+					logger: m.Logger,
+					fsm:    NewConnFsm(),
+				}
+				worker.Start(m.register, m.unregister, m.directMsg)
+				worker.fsm.NewEvent <- open
+				fmt.Println(NewPayload(VarFSM(0).String(), cmd))
+				worker.send([]byte(worker.PrepareMsg(NewPayload(VarFSM(0).String(), cmd)).Compile()))
+				m.broadcast <- "New Worker Added "
+				// m.broadcast <- "NewWorkerAdded" + worker.String()
+
+			} else {
+				m.Logger.Println("Already listening")
+				existingWorker.fsm.NewEvent <- wait
+			}
 
 		case message := <-m.broadcast:
 			for s := range m.workers {
@@ -117,8 +122,8 @@ func (m *Master) Listen() {
 	}
 	defer ln.Close()
 
-	fmt.Println("Listening on " + m.addr.String())
-	fmt.Println("===================================================")
+	m.Logger.Println("Listening on " + m.addr.String())
+	m.Logger.Println("===================================================")
 
 	for {
 		conn, err := ln.Accept()
@@ -137,44 +142,32 @@ func (m *Master) handleConnection(conn net.Conn) {
 	// Read the incoming connection into the buffer.
 	_, err := conn.Read(buf)
 	if err != nil {
-		fmt.Println("Error reading:", err.Error())
+		m.Logger.Println("Error reading:", err.Error())
 	}
 	conn.Close()
 
 	// DEBUGGING
 	// fmt.Printf("Receiced message: len=%d ,msg=\"%s\"\n", reqLen, buf)
 
+	finIdx := bytes.IndexByte(buf, 0)
+
+	m.Logger.Printf("Received message: <%s>\n", string(buf[:finIdx]))
 	// ------------------------------------------------
 	// Process Message
-	msg, err := ParseMessage(string(buf))
+	msg, err := ParseMessage(string(buf[:finIdx]))
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Decoded message:\t%s\n", msg)
+	m.Logger.Printf("Decoded message: %s\n", msg)
 
 	// Check destination
 	if strings.Compare(msg.destination.String(), m.addr.String()) != 0 {
-		fmt.Println("Error wrong destination:", msg.destination.String())
+		m.Logger.Println("Error wrong destination:", msg.destination.String())
+		m.Logger.Println("master addr is:", m.addr.String())
 	}
 
 	// Check
 	// TODO: Move to FSM
-	if oldWorker := m.findConnected(msg.suid); oldWorker == nil {
-		worker := &mWorker{
-			uid:   msg.suid,
-			addr:  msg.source,
-			maddr: m.addr,
-			fsm:   NewConnFsm(),
-		}
-		worker.Start(m.register, m.unregister, m.directMsg)
-		worker.fsm.newEvent <- open
-		m.broadcast <- "New Worker Added "
-		// m.broadcast <- "NewWorkerAdded" + worker.String()
+	m.directMsg <- msg
 
-	} else {
-		fmt.Println("Already listening")
-		oldWorker.fsm.newEvent <- wait
-	}
-
-	fmt.Println("===================================================")
 }

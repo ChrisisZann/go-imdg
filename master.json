@@ -1,5 +1,6 @@
 {
     "node_type":"master",
+    "hostname":"localhost",
     "listening_port":"3333",
     "log_dir": "./var/log/",
     "log_name": "master",

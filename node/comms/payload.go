@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-type payloadType int
+type PayloadType int
 
 const (
-	cmd payloadType = iota
+	cmd PayloadType = iota
 	dat
 	bad
 	def
@@ -20,7 +20,7 @@ const (
  *
  * any change in types need to update functions: ParsePayloadType, String
  * ********************************************************************************/
-func (pt payloadType) String() string {
+func (pt PayloadType) String() string {
 	if pt == cmd {
 		return "0"
 	} else if pt == dat {
@@ -31,7 +31,7 @@ func (pt payloadType) String() string {
 	return ""
 }
 
-func ParsePayloadType(s string) payloadType {
+func ParsePayloadType(s string) PayloadType {
 	si, err := strconv.Atoi(s)
 	if err != nil {
 		log.Fatal(err)
@@ -48,12 +48,12 @@ func ParsePayloadType(s string) payloadType {
 }
 
 type Payload struct {
-	ptype payloadType
+	ptype PayloadType
 	data  string
 	// delim string
 }
 
-func NewPayload(s string, pt payloadType) *Payload {
+func NewPayload(s string, pt PayloadType) *Payload {
 
 	// DEBUGGING
 	// temp := &Payload{
@@ -69,6 +69,10 @@ func NewPayload(s string, pt payloadType) *Payload {
 }
 
 func (p Payload) String() string {
+	// buf := []byte(p.data)
+	// finIdx := bytes.IndexByte(buf, 0)
+	// trimmed := string(buf[:finIdx])
+
 	switch p.ptype {
 	case cmd:
 		return "cmd:" + p.data
@@ -94,6 +98,11 @@ func (p Payload) validate() bool {
 	// TODO
 	return true
 }
+
+// func (p Payload) ParseCmd() VarFSM {
+// 	// TODO
+// 	return true
+// }
 
 func ParsePayload(s string) *Payload {
 	tok := strings.Split(s, ":")

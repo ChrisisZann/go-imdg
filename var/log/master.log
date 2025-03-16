@@ -1,1 +1,15 @@
-2025/03/15 15:10:04 main.go:25: Starting new master...
+2025/03/16 04:22:52 main.go:26: Starting new master...
+2025/03/16 04:22:52 master.go:28: localhost:3333
+2025/03/16 04:22:52 master.go:125: Listening on localhost:3333
+2025/03/16 04:22:52 master.go:126: ===================================================
+2025/03/16 04:22:53 master.go:154: Received message: <localhost:3334|573853|localhost:3333|0:open>
+2025/03/16 04:22:53 master.go:161: Decoded message: source=localhost:3334, suid=573853, payload=cmd:open
+2025/03/16 04:22:53 master.go:88: received DM: source=localhost:3334, suid=573853, payload=cmd:open
+2025/03/16 04:22:53 master.go:46: ERROR - Didnt find existing worker in pool
+2025/03/16 04:22:53 fsm_conn_machine.go:10: DEBUG - curState:disconnected <- open
+2025/03/16 04:22:53 fsm_master_new_worker.go:18: Current: disconnected
+2025/03/16 04:22:53 fsm_master_new_worker.go:19: Received nxtState: connecting
+2025/03/16 04:36:29 master.go:154: Received message: <localhost:3334|573853|localhost:3333|0:ok>
+2025/03/16 04:36:29 master.go:161: Decoded message: source=localhost:3334, suid=573853, payload=cmd:ok
+2025/03/16 04:36:35 master.go:154: Received message: <localhost:3334|573853|localhost:3333|0:another>
+2025/03/16 04:36:35 master.go:161: Decoded message: source=localhost:3334, suid=573853, payload=cmd:another

@@ -9,8 +9,10 @@ import (
 
 type mWorker struct {
 	uid   int
-	addr  nodeAddr
-	maddr nodeAddr
+	addr  NodeAddr
+	maddr NodeAddr
+
+	logger *log.Logger
 
 	fsm *connControl
 }
@@ -31,12 +33,12 @@ func (ms *mWorker) PrepareMsg(p *Payload) *message {
 func (s *mWorker) send(msg []byte) {
 	c, err := net.Dial("tcp", s.addr.String())
 	if err != nil {
-		log.Fatal("Failed to connect to "+s.addr.String(), err)
+		s.logger.Fatal("Failed to connect to "+s.addr.String(), err)
 	}
 	defer c.Close()
 
 	_, err = c.Write(msg)
 	if err != nil {
-		log.Fatal("Failed to write to "+s.addr.String(), err)
+		s.logger.Fatal("Failed to write to "+s.addr.String(), err)
 	}
 }

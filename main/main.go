@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"go-imdg/comms"
-	"go-imdg/data"
-	"go-imdg/node"
+	"go-imdg/config"
+	"go-imdg/node/comms"
+	"go-imdg/node/data"
+	"go-imdg/node/worker"
 	"log"
-
 	"strings"
 )
 
@@ -19,17 +19,22 @@ func main() {
 
 	flag.Parse()
 
-	testCfg := node.New(*cfgFile)
+	testCfg := config.New(*cfgFile)
 
 	if strings.Compare(testCfg.NodeType, "master") == 0 {
+
 		testCfg.Logger.Println("Starting new master...")
-		master := comms.NewMaster("localhost", testCfg.LPort)
+
+		master := comms.NewMaster(testCfg)
+
 		master.Start()
 
 	} else if strings.Compare(testCfg.NodeType, "worker") == 0 {
 		testCfg.Logger.Println("Starting new worker... ")
-		worker := comms.NewWorker(testCfg.MasterConn, testCfg.Name, "localhost", testCfg.LPort)
 
+		// worker := worker.NewWorker(testCfg.MasterConn, testCfg.Name, "localhost", testCfg.LPort)
+
+		worker := worker.NewWorker(testCfg)
 		testCfg.Logger.Println("new worker:", worker)
 
 		worker.Start()
@@ -38,10 +43,8 @@ func main() {
 		for {
 			fmt.Print("Enter message:")
 			fmt.Scan(&message)
-			// NewPayload(message, payloadType.def)
 
-			worker.PrepareMsg("3:" + message)
-			worker.SendMsg()
+			worker.SendMsg(worker.PrepareMsg(comms.NewPayload(message, comms.PayloadType(0))))
 		}
 	} else if strings.Compare(testCfg.NodeType, "tester") == 0 {
 		var s data.MemPage

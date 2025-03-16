@@ -38,7 +38,7 @@ func (m *MemPage) Save(dat []byte) error {
 		copy(m.Page[m.pos].Line[:], dat)
 	} else {
 		fmt.Println("WARNING - Page is full")
-		return nil
+		return errors.New("Page is full")
 	}
 
 	m.pos++

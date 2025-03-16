@@ -1,2 +1,4 @@
-2025/03/15 15:10:07 main.go:30: Starting new worker... 
-2025/03/15 15:10:07 main.go:33: new worker: &{{tcp localhost:3333} {tcp localhost:3335} localhost;3335;248165; 0xc000090150 0xc0000901c0 <nil> <nil>}
+2025/03/16 03:01:01 main.go:33: Starting new worker... 
+2025/03/16 03:01:01 main.go:38: new worker: &{{{tcp localhost:3333} {tcp localhost:3335} localhost;3335;514914; 0xc000092150 0xc0000921c0 <nil> <nil>} {0xc000060098 0xc00009c630 worker localhost 3335 w2 localhost:3333} {0 0xc000092230 0xc0000922a0}}
+2025/03/16 03:01:01 fsm_worker_processor.go:8: Current: stopped
+2025/03/16 03:01:01 fsm_worker_processor.go:9: Received nxtState: startup

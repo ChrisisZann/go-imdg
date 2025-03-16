@@ -1,5 +1,6 @@
 {
     "node_type":"worker",
+    "hostname":"localhost",
     "listening_port":"3335",
     "log_dir": "./var/log/",
     "log_name": "worker2",

@@ -9,16 +9,11 @@ import (
 
 // <source|suid|dest|payload>
 type message struct {
-	source      nodeAddr
+	source      NodeAddr
 	suid        int
-	destination nodeAddr
+	destination NodeAddr
 	payload     *Payload
 }
-
-//
-// func NewMessage() {
-// 	return &message{}
-// }
 
 func (m message) String() string {
 	return "source=" + m.source.String() + ", suid=" + strconv.Itoa(m.suid) + ", payload=" + m.payload.String()
