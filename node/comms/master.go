@@ -98,7 +98,7 @@ func (m *Master) RunComms() {
 				worker.fsm.NewEvent <- open
 				fmt.Println(NewPayload(VarFSM(0).String(), cmd))
 				worker.send([]byte(worker.PrepareMsg(NewPayload(VarFSM(0).String(), cmd)).Compile()))
-				m.broadcast <- "New Worker Added "
+
 				// m.broadcast <- "NewWorkerAdded" + worker.String()
 
 			} else {
@@ -107,6 +107,7 @@ func (m *Master) RunComms() {
 			}
 
 		case message := <-m.broadcast:
+			m.Logger.Println("Broadcasting message: ", message)
 			for s := range m.workers {
 				s.send([]byte(s.PrepareMsg(NewPayload(message, cmd)).Compile()))
 			}

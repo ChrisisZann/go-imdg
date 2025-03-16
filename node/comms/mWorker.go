@@ -41,4 +41,7 @@ func (s *mWorker) send(msg []byte) {
 	if err != nil {
 		s.logger.Fatal("Failed to write to "+s.addr.String(), err)
 	}
+
+	s.logger.Println("Sent message to ", s.addr.String())
+	s.logger.Println("Message: ", string(msg))
 }

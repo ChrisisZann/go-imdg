@@ -51,5 +51,4 @@ func ListenConnEvents(l *log.Logger, curState *connState, nxtState chan<- connSt
 			nxtState <- invalid_state
 		}
 	}
-	nxtState <- invalid_state
 }

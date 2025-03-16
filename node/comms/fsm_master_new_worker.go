@@ -17,34 +17,35 @@ func (s *mWorker) ListenFSM(register, unregister chan<- *mWorker, directMsg chan
 	for nxtState := range s.fsm.nxtState {
 		s.logger.Println("Current:", s.fsm.curState)
 		s.logger.Println("Received nxtState:", nxtState)
+		newState := nxtState
 
 		switch nxtState {
 
 		case disconnected:
 
 			unregister <- s
-			s.fsm.curState = nxtState
 
 		case connecting:
 
 			register <- s
-			s.send([]byte(s.PrepareMsg(NewPayload("RD", cmd)).Compile()))
+			s.send([]byte(s.PrepareMsg(
+				NewPayload(ParseVarFSM("accept").String(), cmd)).Compile()))
+
 			s.logger.Println("New connection added")
-			s.fsm.curState = nxtState
 			s.fsm.NewEvent <- accept
-			// s.logger.Println(s.fsm.curState, "...")
 
 		case listening:
-			// s.logger.Println(nxtState, "...")
-			s.logger.Println("worker waiting for requests...")
 
-			s.fsm.curState = nxtState
+			s.logger.Println("worker waiting for requests...")
+			// s.fsm.NewEvent <- wait
 
 		default:
+
 			s.logger.Println("ListenFSM : Bad State")
+			newState = invalid_state
 
 		}
-
+		s.fsm.curState = newState
 		s.logger.Println("Finished processing state")
 		s.logger.Println("Current:", s.fsm.curState)
 
