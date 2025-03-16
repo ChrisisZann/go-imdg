@@ -24,7 +24,8 @@ func (cb *CommsBox) FsmConnProcessor() {
 				NewPayload(VarFSM(2).String(), PayloadType(0)))
 
 		case listening:
-			// Wait for requests
+			cb.logger.Println("listening...")
+
 		default:
 			cb.logger.Println("Invalid state")
 			newState = connState(fatal)

@@ -6,4 +6,4 @@ func (cb *CommsBox) FsmConnProcessor()
 
 - refactor master-> split internal and conn 
 
--BUG: sending duplicate accept from master
+- RACE CONTITION BLOCKS MASTER

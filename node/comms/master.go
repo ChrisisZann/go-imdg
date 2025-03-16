@@ -97,9 +97,9 @@ func (m *Master) RunComms() {
 				worker.Start(m.register, m.unregister, m.directMsg)
 				worker.fsm.NewEvent <- open
 				fmt.Println(NewPayload(VarFSM(0).String(), cmd))
-				worker.send([]byte(worker.PrepareMsg(NewPayload(VarFSM(0).String(), cmd)).Compile()))
+				// worker.send([]byte(worker.PrepareMsg(NewPayload(VarFSM(0).String(), cmd)).Compile()))
 
-				// m.broadcast <- "NewWorkerAdded" + worker.String()
+				m.broadcast <- "NewWorkerAdded" + worker.String()
 
 			} else {
 				m.Logger.Println("Already listening")
