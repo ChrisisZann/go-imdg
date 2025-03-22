@@ -42,7 +42,8 @@ func main() {
 			fmt.Print("Enter message:")
 			fmt.Scan(&message)
 
-			s.CommsBox.SendMsg(s.PrepareMsg(comms.NewPayload(message, comms.PayloadType(0))))
+			// s.CommsBox.SendMsg(s.PrepareMsg(comms.NewPayload(message, comms.PayloadType(0))))
+			s.CommsBox.SendPayload(comms.NewPayload(message, comms.PayloadType(0)))
 		}
 
 		// s.CommsBox.Send <- s.PrepareMsg(comms.NewPayload("Hello", comms.PayloadType(0)))

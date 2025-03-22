@@ -14,8 +14,8 @@ type CommsBox struct {
 
 	header string
 
-	Send    chan *message
-	Receive chan *message
+	send    chan *message
+	receive chan *message
 
 	logger *log.Logger
 }
@@ -25,14 +25,13 @@ func NewCommsBox(src, dest NodeAddr, suid string, l *log.Logger) *CommsBox {
 		addr:     src,
 		sendAddr: dest,
 		header:   CompileHeader(src.String(), suid, dest.String()),
-		Send:     make(chan *message, 5),
-		Receive:  make(chan *message),
-		// ConnControl: NewConnFsm(),
-		logger: l,
+		send:     make(chan *message),
+		receive:  make(chan *message),
+		logger:   l,
 	}
 }
 
-func (cb *CommsBox) PrepareMsg(p *Payload) *message {
+func (cb CommsBox) PrepareMsg(p *Payload) *message {
 	return &message{
 		source:      cb.addr,
 		suid:        os.Getpid(),
@@ -41,8 +40,12 @@ func (cb *CommsBox) PrepareMsg(p *Payload) *message {
 	}
 }
 
+func (cb *CommsBox) SendPayload(p *Payload) {
+	cb.send <- cb.PrepareMsg(p)
+}
+
 func (cb *CommsBox) SendMsg(msg *message) {
-	cb.Send <- msg
+	cb.send <- msg
 }
 
 func (cb *CommsBox) Start() {
@@ -54,7 +57,7 @@ func (cb *CommsBox) Start() {
 
 func (cb *CommsBox) sendLoop() {
 
-	for msg := range cb.Send {
+	for msg := range cb.send {
 
 		fmt.Println("SENDING")
 
@@ -76,7 +79,7 @@ func (cb *CommsBox) sendLoop() {
 }
 
 func (cb *CommsBox) receiveLoop() {
-	for msg := range cb.Receive {
+	for msg := range cb.receive {
 
 		fmt.Println("RECEIVED")
 
@@ -121,6 +124,6 @@ func (cb *CommsBox) handleConnection(conn net.Conn) {
 	if err != nil {
 		cb.logger.Fatal(err)
 	}
-	cb.Receive <- msg
+	cb.receive <- msg
 	conn.Close()
 }
