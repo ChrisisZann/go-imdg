@@ -55,3 +55,8 @@ func ParseMessage(input string) (*message, error) {
 		payload:     ParsePayload(tok[3]),
 	}, nil
 }
+
+// <source|suid|dest|payload>
+func CompileHeader(source, suid, dest string) string {
+	return source + "|" + suid + "|" + dest + "|"
+}

@@ -1,8 +1,0 @@
-2025/03/16 05:42:47 main.go:33: Starting new worker... 
-2025/03/16 05:42:47 main.go:38: new worker: &{{{tcp localhost:3333} {tcp localhost:3335} localhost;3335;631057; 0xc000092150 0xc0000921c0 0xc000012150 0xc00009c630} {0xc000060098 0xc00009c630 worker localhost 3335 w2 localhost:3333} {0 0xc000092310 0xc000092380}}
-2025/03/16 05:42:47 worker_fsm_processor.go:10: Current: stopped
-2025/03/16 05:42:47 worker_fsm_processor.go:11: Received nxtState: startup
-2025/03/16 05:42:47 worker_fsm_processor.go:19: sending open message
-2025/03/16 05:42:47 fsm_conn_mux.go:10: DEBUG - curState:disconnected <- open
-2025/03/16 05:42:47 commsBox_fsm_conn_processor.go:12: current state 	  :  disconnected
-2025/03/16 05:42:47 commsBox_fsm_conn_processor.go:13: received new state :  connecting

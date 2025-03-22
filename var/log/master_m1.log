@@ -1,0 +1,5 @@
+2025/03/23 01:00:30 master.go:33: Setting up new master...
+2025/03/23 01:00:30 master.go:34: PID: 132704
+2025/03/23 01:00:30 master.go:35: CFG: {0xc00009c630 master localhost 3333 m1 NA}
+2025/03/23 01:00:30 commsBox.go:101: Listening on  localhost:3333
+2025/03/23 01:02:49 commsBox.go:86: Received message: <ok>

@@ -1,9 +1,0 @@
-- fsm_worker_processor.go:v
-func (w *Worker) fsmInternalProcessor()
-
-- fsm_worker_conn.go
-func (cb *CommsBox) FsmConnProcessor()
-
-- refactor master-> split internal and conn 
-
-- RACE CONTITION BLOCKS MASTER
