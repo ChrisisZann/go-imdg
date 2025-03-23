@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Master struct {
@@ -25,10 +26,7 @@ type netSlave struct {
 
 func (m Master) exists_slave(cmpID int) bool {
 	_, ok := m.slaveTopology[cmpID]
-	if ok {
-		return true
-	}
-	return false
+	return ok
 }
 
 func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
@@ -97,6 +95,7 @@ func (m *Master) ReceiveHandler() {
 				if strings.Compare(msg.ReadPayloadData(), "alive") == 0 {
 					m.Logger.Println("Received heartbeat from", msg.ReadSenderID())
 					m.slaveTopology[msg.ReadSenderID()].alive = true
+					m.slaveTopology[msg.ReadSenderID()].lastPing = time.Now()
 				}
 			}
 		}
