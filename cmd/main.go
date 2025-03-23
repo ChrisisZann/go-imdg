@@ -22,41 +22,31 @@ func main() {
 
 	if strings.Compare(n.NodeType, "master") == 0 {
 		m := node.NewMaster(*n)
-
-		// Connection to slave
-		m.NewCB("bad", "666")
-		fmt.Println("TESTING:", m.CommsBox)
-
-		// comms loop
-		go m.ReceiveHandler()
-		m.StartCommsBoxLoop(m.Receiver)
-
-		// Listen to network
-		m.Listen()
+		m.Start()
 
 	} else if strings.Compare(n.NodeType, "slave") == 0 {
 		s := node.NewSlave(*n)
 
 		// Connection to master
 		s.NewCB("localhost", "3333")
-		fmt.Println("TESTING2:", s.CommsBox)
+		fmt.Println("TESTING2:", s.MasterConnection)
 
 		//
 		go s.ReceiveHandler()
-		s.StartCommsBoxLoop(s.Receiver)
+		s.StartMasterConnectionLoop(s.Receiver)
 
 		go s.Listen()
 
-		var message string
+		var Message string
 		for {
-			fmt.Print("Enter message:")
-			fmt.Scan(&message)
+			fmt.Print("Enter Message:")
+			fmt.Scan(&Message)
 
-			// s.CommsBox.SendMsg(s.PrepareMsg(comms.NewPayload(message, comms.PayloadType(0))))
-			s.CommsBox.SendPayload(comms.NewPayload(message, comms.PayloadType(0)))
+			// s.MasterConnection.SendMsg(s.PrepareMsg(comms.NewPayload(Message, comms.PayloadType(0))))
+			s.MasterConnection.SendPayload(comms.NewPayload(Message, comms.PayloadType(0)))
 		}
 
-		// s.CommsBox.Send <- s.PrepareMsg(comms.NewPayload("Hello", comms.PayloadType(0)))
+		// s.MasterConnection.Send <- s.PrepareMsg(comms.NewPayload("Hello", comms.PayloadType(0)))
 	} else if strings.Compare(n.NodeType, "tester") == 0 {
 		var s data.MemPage
 		s.Init()

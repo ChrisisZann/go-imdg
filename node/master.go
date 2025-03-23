@@ -5,30 +5,43 @@ import (
 	"go-imdg/config"
 	"os"
 	"strconv"
-	"strings"
 )
 
 type Master struct {
 	id int
 
 	config.Node
-	comms.CommsBox
+	comms.MasterListener
+	Receiver chan *comms.Message
 
-	Receiver chan *comms.Payload
+	slaveTopology map[int]*netSlave
+}
+
+type netSlave struct {
+	connection *comms.SlaveConnection
+	heartbeat
+}
+
+func (m *Master) addSlave(dest string, destPort string) {
+
+	tmp := netSlave{
+		connection: comms.NewSlaveConnection(
+			comms.NewNodeAddr("tcp", m.Hostname+":"+m.LPort),
+			comms.NewNodeAddr("tcp", dest+":"+destPort),
+			strconv.Itoa(m.id),
+			m.Logger,
+		),
+		heartbeat: heartbeat{
+			alive: true,
+		}}
+
+	m.Logger.Println("Adding slave to topology")
+	m.slaveTopology[tmp.connection.GetID()] = &tmp
+	m.slaveTopology[tmp.connection.GetID()].connection.OpenSendChannel()
 }
 
 func (m Master) CompileHeader(dest string) string {
 	return comms.CompileHeader(m.Hostname, strconv.Itoa(m.id), dest)
-}
-
-func (m *Master) NewCB(dest string, destPort string) {
-
-	m.CommsBox = *comms.NewCommsBox(
-		comms.NewNodeAddr("tcp", m.Hostname+":"+m.LPort),
-		comms.NewNodeAddr("tcp", dest+":"+destPort),
-		strconv.Itoa(m.id),
-		m.Logger,
-	)
 }
 
 func NewMaster(cfg config.Node) *Master {
@@ -38,17 +51,29 @@ func NewMaster(cfg config.Node) *Master {
 	cfg.Logger.Println("CFG:", cfg)
 
 	return &Master{
-		id:       os.Getpid(),
-		Node:     cfg,
-		Receiver: make(chan *comms.Payload, 10),
+		id:   os.Getpid(),
+		Node: cfg,
+		MasterListener: *comms.NewMasterListener(
+			comms.NewNodeAddr("tcp", cfg.Hostname+":"+cfg.LPort),
+			cfg.Logger,
+		),
+		Receiver:      make(chan *comms.Message, 10),
+		slaveTopology: make(map[int]*netSlave),
 	}
+}
+
+func (m *Master) Start() {
+
+	go m.ReceiveHandler()
+	m.Listen(m.Receiver)
+
 }
 
 func (m *Master) ReceiveHandler() {
 
-	for p := range m.Receiver {
-		trimmed := strings.Trim(p.ReadData(), "\x00")
-		m.Logger.Printf("Received message: <%s>\n", trimmed)
-		m.Logger.Println("Received:", p)
+	for msg := range m.Receiver {
+		m.Logger.Printf("Received Message: <%s>\n", msg)
+		m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
+		m.Logger.Println("Received Payload Data:", msg.ReadPayloadData())
 	}
 }

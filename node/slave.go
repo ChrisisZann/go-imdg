@@ -11,7 +11,7 @@ type Slave struct {
 	id int
 
 	config.Node
-	comms.CommsBox
+	comms.MasterConnection
 
 	Receiver chan *comms.Payload
 }
@@ -24,7 +24,7 @@ func (s *Slave) NewCB(dest string, destPort string) {
 
 	s.Logger.Println("Creating new connection...")
 
-	s.CommsBox = *comms.NewCommsBox(
+	s.MasterConnection = *comms.NewMasterConnection(
 		comms.NewNodeAddr("tcp", s.Hostname+":"+s.LPort),
 		comms.NewNodeAddr("tcp", dest+":"+destPort),
 		strconv.Itoa(s.id),

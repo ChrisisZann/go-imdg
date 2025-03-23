@@ -5,34 +5,47 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
-type CommsBox struct {
+type MasterConnection struct {
 	addr     NodeAddr
 	sendAddr NodeAddr
 
+	id     int
 	header string
 
-	send    chan *message
-	receive chan *message
+	send    chan *Message
+	receive chan *Message
 
 	logger *log.Logger
 }
 
-func NewCommsBox(src, dest NodeAddr, suid string, l *log.Logger) *CommsBox {
-	return &CommsBox{
+func NewMasterConnection(src, dest NodeAddr, suid string, l *log.Logger) *MasterConnection {
+	i_suid, err := strconv.Atoi(suid)
+	if err != nil {
+		l.Fatalln("Failed to convert suid to int")
+		return nil
+	}
+
+	return &MasterConnection{
 		addr:     src,
 		sendAddr: dest,
+		id:       i_suid,
 		header:   CompileHeader(src.String(), suid, dest.String()),
-		send:     make(chan *message, 10),
-		receive:  make(chan *message, 10),
+		send:     make(chan *Message, 10),
+		receive:  make(chan *Message, 10),
 		logger:   l,
 	}
 }
 
-func (cb CommsBox) PrepareMsg(p *Payload) *message {
-	return &message{
+func (cb MasterConnection) GetID() int {
+	return cb.id
+}
+
+func (cb MasterConnection) PrepareMsg(p *Payload) *Message {
+	return &Message{
 		source:      cb.addr,
 		suid:        os.Getpid(),
 		destination: cb.sendAddr,
@@ -44,22 +57,22 @@ func (cb CommsBox) PrepareMsg(p *Payload) *message {
 // func SendData
 // func SendDef
 
-func (cb *CommsBox) SendPayload(p *Payload) {
+func (cb *MasterConnection) SendPayload(p *Payload) {
 	cb.send <- cb.PrepareMsg(p)
 }
 
-func (cb *CommsBox) SendMsg(msg *message) {
+func (cb *MasterConnection) SendMsg(msg *Message) {
 	cb.send <- msg
 }
 
-func (cb *CommsBox) StartCommsBoxLoop(c chan *Payload) {
+func (cb *MasterConnection) StartMasterConnectionLoop(c chan *Payload) {
 
 	go cb.sendLoop()
 	go cb.receiveLoop(c)
 	// cb.listen()
 }
 
-func (cb *CommsBox) sendLoop() {
+func (cb *MasterConnection) sendLoop() {
 
 	for msg := range cb.send {
 
@@ -82,11 +95,11 @@ func (cb *CommsBox) sendLoop() {
 	}
 }
 
-func (cb *CommsBox) receiveLoop(c chan<- *Payload) {
+func (cb *MasterConnection) receiveLoop(c chan<- *Payload) {
 	for msg := range cb.receive {
 
 		if msg.payload.ptype == network {
-			cb.logger.Println("Received network related message:", msg.payload.ReadData())
+			cb.logger.Println("Received network related Message:", msg.payload.ReadData())
 
 			// TODO handle network changes
 			// -----------------------------------
@@ -99,7 +112,7 @@ func (cb *CommsBox) receiveLoop(c chan<- *Payload) {
 	}
 }
 
-func (cb *CommsBox) Listen() {
+func (cb *MasterConnection) Listen() {
 	ln, err := net.Listen("tcp", cb.addr.String())
 	if err != nil {
 		panic(err)
@@ -117,7 +130,7 @@ func (cb *CommsBox) Listen() {
 	}
 }
 
-func (cb *CommsBox) handleConnection(conn net.Conn) {
+func (cb *MasterConnection) handleConnection(conn net.Conn) {
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 

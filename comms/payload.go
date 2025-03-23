@@ -67,14 +67,14 @@ func (p Payload) ReadType() PayloadType {
 
 func (p Payload) ReadData() string {
 
-	// Emit zeros in buffer the message
+	// Emit zeros in buffer the Message
 	trimmed := strings.Trim(p.data, "\x00")
 	return trimmed
 }
 
 func (p Payload) String() string {
 
-	// Emit zeros in buffer the message
+	// Emit zeros in buffer the Message
 	trimmed := strings.Trim(p.data, "\x00")
 
 	switch p.ptype {

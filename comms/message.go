@@ -8,18 +8,26 @@ import (
 )
 
 // <source|suid|dest|payload>
-type message struct {
+type Message struct {
 	source      NodeAddr
 	suid        int
 	destination NodeAddr
 	payload     *Payload
 }
 
-func (m message) String() string {
+func (m Message) ReadPayloadData() string {
+	return m.payload.ReadData()
+}
+
+func (m Message) ReadPayloadType() string {
+	return m.payload.ptype.String()
+}
+
+func (m Message) String() string {
 	return "source=" + m.source.String() + ", suid=" + strconv.Itoa(m.suid) + ", payload=" + m.payload.String()
 }
 
-func (m message) Compile() string {
+func (m Message) Compile() string {
 
 	pl, err := m.payload.Compile()
 	if err != nil {
@@ -28,10 +36,10 @@ func (m message) Compile() string {
 	return m.source.String() + "|" + strconv.Itoa(m.suid) + "|" + m.destination.String() + "|" + pl
 }
 
-func ParseMessage(input string) (*message, error) {
+func ParseMessage(input string) (*Message, error) {
 	tok := strings.Split(input, "|")
 	if len(tok) != 4 {
-		return nil, errors.New("wrong message structure:" + strconv.Itoa(len(tok)))
+		return nil, errors.New("wrong Message structure:" + strconv.Itoa(len(tok)))
 	}
 
 	// DEBUGGING
@@ -48,7 +56,7 @@ func ParseMessage(input string) (*message, error) {
 
 	destAddr := NewNodeAddr("tcp", tok[2])
 
-	return &message{
+	return &Message{
 		source:      sourceAddr,
 		destination: destAddr,
 		suid:        uid,
