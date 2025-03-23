@@ -1,7 +1,8 @@
 package node
 
 type node interface {
-	NewInstance()
-	NewCB()
-	CompileHeader()
+	// NewInstance()
+	NewCB(d, p string)
+	CompileHeader(s string) string
+	ReceiveHandler()
 }

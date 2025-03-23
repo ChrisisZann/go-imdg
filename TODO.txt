@@ -1,0 +1,2 @@
+Q: CommsBox handleConnection : make loop to read multiple messages in sequence?
+

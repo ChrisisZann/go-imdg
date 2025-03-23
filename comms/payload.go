@@ -12,6 +12,7 @@ type PayloadType int
 const (
 	cmd PayloadType = iota
 	dat
+	network
 	bad
 	def
 )
@@ -54,32 +55,35 @@ type Payload struct {
 }
 
 func NewPayload(s string, pt PayloadType) *Payload {
-
-	// DEBUGGING
-	// temp := &Payload{
-	// 	ptype: pt,
-	// 	data:  s,
-	// }
-	// fmt.Println("New Payload created:", temp.String())
-
 	return &Payload{
 		ptype: pt,
 		data:  s,
 	}
 }
 
+func (p Payload) ReadType() PayloadType {
+	return p.ptype
+}
+
+func (p Payload) ReadData() string {
+
+	// Emit zeros in buffer the message
+	trimmed := strings.Trim(p.data, "\x00")
+	return trimmed
+}
+
 func (p Payload) String() string {
-	// buf := []byte(p.data)
-	// finIdx := bytes.IndexByte(buf, 0)
-	// trimmed := string(buf[:finIdx])
+
+	// Emit zeros in buffer the message
+	trimmed := strings.Trim(p.data, "\x00")
 
 	switch p.ptype {
 	case cmd:
-		return "cmd:" + p.data
+		return "cmd:" + trimmed
 	case dat:
-		return "data:" + p.data
+		return "data:" + trimmed
 	case def:
-		return "def:" + p.data
+		return "def:" + trimmed
 	default:
 		return "bad payload"
 	}

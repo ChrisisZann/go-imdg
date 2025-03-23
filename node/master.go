@@ -5,6 +5,7 @@ import (
 	"go-imdg/config"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Master struct {
@@ -12,6 +13,8 @@ type Master struct {
 
 	config.Node
 	comms.CommsBox
+
+	Receiver chan *comms.Payload
 }
 
 func (m Master) CompileHeader(dest string) string {
@@ -35,7 +38,17 @@ func NewMaster(cfg config.Node) *Master {
 	cfg.Logger.Println("CFG:", cfg)
 
 	return &Master{
-		id:   os.Getpid(),
-		Node: cfg,
+		id:       os.Getpid(),
+		Node:     cfg,
+		Receiver: make(chan *comms.Payload, 10),
+	}
+}
+
+func (m *Master) ReceiveHandler() {
+
+	for p := range m.Receiver {
+		trimmed := strings.Trim(p.ReadData(), "\x00")
+		m.Logger.Printf("Received message: <%s>\n", trimmed)
+		m.Logger.Println("Received:", p)
 	}
 }

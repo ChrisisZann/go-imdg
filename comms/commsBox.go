@@ -25,8 +25,8 @@ func NewCommsBox(src, dest NodeAddr, suid string, l *log.Logger) *CommsBox {
 		addr:     src,
 		sendAddr: dest,
 		header:   CompileHeader(src.String(), suid, dest.String()),
-		send:     make(chan *message),
-		receive:  make(chan *message),
+		send:     make(chan *message, 10),
+		receive:  make(chan *message, 10),
 		logger:   l,
 	}
 }
@@ -40,6 +40,10 @@ func (cb CommsBox) PrepareMsg(p *Payload) *message {
 	}
 }
 
+// func SendCMD
+// func SendData
+// func SendDef
+
 func (cb *CommsBox) SendPayload(p *Payload) {
 	cb.send <- cb.PrepareMsg(p)
 }
@@ -48,10 +52,10 @@ func (cb *CommsBox) SendMsg(msg *message) {
 	cb.send <- msg
 }
 
-func (cb *CommsBox) Start() {
+func (cb *CommsBox) StartCommsBoxLoop(c chan *Payload) {
 
 	go cb.sendLoop()
-	go cb.receiveLoop()
+	go cb.receiveLoop(c)
 	// cb.listen()
 }
 
@@ -78,19 +82,20 @@ func (cb *CommsBox) sendLoop() {
 	}
 }
 
-func (cb *CommsBox) receiveLoop() {
+func (cb *CommsBox) receiveLoop(c chan<- *Payload) {
 	for msg := range cb.receive {
 
-		fmt.Println("RECEIVED")
+		if msg.payload.ptype == network {
+			cb.logger.Println("Received network related message:", msg.payload.ReadData())
 
-		// Dont print zeros in buffer the message
-		// finIdx := bytes.IndexByte(message, 0)
-		trimmed := strings.Trim(msg.payload.data, "\x00")
-		cb.logger.Printf("Received message: <%s>\n", trimmed)
+			// TODO handle network changes
+			// -----------------------------------
 
-		// if msg.payload.ptype == cmd {
-		// 	cb.ConnControl.NewEvent <- ParseVarFSM(msg.payload.data)
-		// }
+			// -----------------------------------
+
+		} else {
+			c <- msg.payload
+		}
 	}
 }
 
@@ -115,6 +120,8 @@ func (cb *CommsBox) Listen() {
 func (cb *CommsBox) handleConnection(conn net.Conn) {
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
+
+	//should make loop? to read multiple messages?
 
 	_, err := conn.Read(buf)
 	if err != nil {

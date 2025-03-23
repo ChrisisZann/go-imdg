@@ -1,9 +1,9 @@
 {
-    "node_type":"master",
-    "hostname":"localhost",
-    "listening_port":"3333",
-    "log_dir": "./var/log/",
-    "log_name": "master",
-    "node_name":"m1",
-    "master_conn":"placeholder"
+  "node_type": "master",
+  "hostname": "localhost",
+  "listening_port": "3333",
+  "log_dir": "./var/log/",
+  "log_name": "master",
+  "node_name": "m1",
+  "master_conn": "placeholder"
 }

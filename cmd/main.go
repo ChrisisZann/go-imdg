@@ -22,19 +22,29 @@ func main() {
 
 	if strings.Compare(n.NodeType, "master") == 0 {
 		m := node.NewMaster(*n)
+
+		// Connection to slave
 		m.NewCB("bad", "666")
 		fmt.Println("TESTING:", m.CommsBox)
 
-		m.Start()
+		// comms loop
+		go m.ReceiveHandler()
+		m.StartCommsBoxLoop(m.Receiver)
+
+		// Listen to network
 		m.Listen()
 
 	} else if strings.Compare(n.NodeType, "slave") == 0 {
 		s := node.NewSlave(*n)
 
-		// Connection to master init
+		// Connection to master
 		s.NewCB("localhost", "3333")
 		fmt.Println("TESTING2:", s.CommsBox)
-		s.Start()
+
+		//
+		go s.ReceiveHandler()
+		s.StartCommsBoxLoop(s.Receiver)
+
 		go s.Listen()
 
 		var message string

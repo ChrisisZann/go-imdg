@@ -12,6 +12,8 @@ type Slave struct {
 
 	config.Node
 	comms.CommsBox
+
+	Receiver chan *comms.Payload
 }
 
 func (s Slave) CompileHeader(dest string) string {
@@ -19,7 +21,9 @@ func (s Slave) CompileHeader(dest string) string {
 }
 
 func (s *Slave) NewCB(dest string, destPort string) {
-	s.Logger.Println("Adding new connection...")
+
+	s.Logger.Println("Creating new connection...")
+
 	s.CommsBox = *comms.NewCommsBox(
 		comms.NewNodeAddr("tcp", s.Hostname+":"+s.LPort),
 		comms.NewNodeAddr("tcp", dest+":"+destPort),
@@ -35,7 +39,15 @@ func NewSlave(cfg config.Node) *Slave {
 	cfg.Logger.Println("CFG:", cfg)
 
 	return &Slave{
-		id:   os.Getpid(),
-		Node: cfg,
+		id:       os.Getpid(),
+		Node:     cfg,
+		Receiver: make(chan *comms.Payload, 10),
+	}
+}
+
+func (s *Slave) ReceiveHandler() {
+
+	for p := range s.Receiver {
+		s.Logger.Println("Received:", p)
 	}
 }

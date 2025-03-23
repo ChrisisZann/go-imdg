@@ -1,0 +1,8 @@
+{
+  "node_type": "slave",
+  "hostname": "localhost",
+  "listening_port": "8889",
+  "log_dir": "./var/log/",
+  "node_name": "s1",
+  "master_conn": "localhost:8888"
+}
