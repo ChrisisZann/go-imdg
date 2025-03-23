@@ -15,8 +15,24 @@ type Message struct {
 	payload     *Payload
 }
 
+func (m Message) ReadSender() NodeAddr {
+	return m.source
+}
+
+func (m Message) ReadDest() string {
+	return m.destination.String()
+}
+
+func (m Message) ReadSenderID() int {
+	return m.suid
+}
+
 func (m Message) ReadPayloadData() string {
 	return m.payload.ReadData()
+}
+
+func (m Message) GetPayloadType() PayloadType {
+	return m.payload.ptype
 }
 
 func (m Message) ReadPayloadType() string {

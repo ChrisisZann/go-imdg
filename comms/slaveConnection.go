@@ -52,6 +52,10 @@ func (cb SlaveConnection) PrepareMsg(p *Payload) *Message {
 	}
 }
 
+func (cb *SlaveConnection) SendPing() {
+	cb.send <- cb.PrepareMsg(NewPayload("ping", cmd))
+}
+
 func (cb *SlaveConnection) SendPayload(p *Payload) {
 	cb.send <- cb.PrepareMsg(p)
 }

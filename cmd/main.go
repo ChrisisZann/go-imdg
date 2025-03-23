@@ -28,7 +28,7 @@ func main() {
 		s := node.NewSlave(*n)
 
 		// Connection to master
-		s.NewCB("localhost", "3333")
+		s.NewMasterConnection("localhost", "3333")
 		fmt.Println("TESTING2:", s.MasterConnection)
 
 		//

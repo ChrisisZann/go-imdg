@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Master Connection support 2-way communication
@@ -20,10 +21,12 @@ type MasterConnection struct {
 	send    chan *Message
 	receive chan *Message
 
+	heartbeatInterval time.Duration
+
 	logger *log.Logger
 }
 
-func NewMasterConnection(src, dest NodeAddr, suid string, l *log.Logger) *MasterConnection {
+func NewMasterConnection(src, dest NodeAddr, suid string, hbInterval time.Duration, l *log.Logger) *MasterConnection {
 	i_suid, err := strconv.Atoi(suid)
 	if err != nil {
 		l.Fatalln("Failed to convert suid to int")
@@ -31,25 +34,26 @@ func NewMasterConnection(src, dest NodeAddr, suid string, l *log.Logger) *Master
 	}
 
 	return &MasterConnection{
-		addr:     src,
-		sendAddr: dest,
-		id:       i_suid,
-		header:   CompileHeader(src.String(), suid, dest.String()),
-		send:     make(chan *Message, 10),
-		receive:  make(chan *Message, 10),
-		logger:   l,
+		addr:              src,
+		sendAddr:          dest,
+		id:                i_suid,
+		header:            CompileHeader(src.String(), suid, dest.String()),
+		send:              make(chan *Message, 10),
+		receive:           make(chan *Message, 10),
+		heartbeatInterval: hbInterval,
+		logger:            l,
 	}
 }
 
-func (cb MasterConnection) GetID() int {
-	return cb.id
+func (mc MasterConnection) GetID() int {
+	return mc.id
 }
 
-func (cb MasterConnection) PrepareMsg(p *Payload) *Message {
+func (mc MasterConnection) PrepareMsg(p *Payload) *Message {
 	return &Message{
-		source:      cb.addr,
+		source:      mc.addr,
 		suid:        os.Getpid(),
-		destination: cb.sendAddr,
+		destination: mc.sendAddr,
 		payload:     p,
 	}
 }
@@ -58,49 +62,58 @@ func (cb MasterConnection) PrepareMsg(p *Payload) *Message {
 // func SendData
 // func SendDef
 
-func (cb *MasterConnection) SendPayload(p *Payload) {
-	cb.send <- cb.PrepareMsg(p)
+func (mc *MasterConnection) SendPayload(p *Payload) {
+	mc.send <- mc.PrepareMsg(p)
 }
 
-func (cb *MasterConnection) SendMsg(msg *Message) {
-	cb.send <- msg
+func (mc *MasterConnection) SendMsg(msg *Message) {
+	mc.send <- msg
 }
 
-func (cb *MasterConnection) StartMasterConnectionLoop(c chan *Payload) {
+func (mc *MasterConnection) StartMasterConnectionLoop(c chan *Payload) {
 
-	go cb.sendLoop()
-	go cb.receiveLoop(c)
-	// cb.listen()
+	go mc.sendLoop()
+	go mc.receiveLoop(c)
+	go mc.sendHeartbeat()
+
+	// mc.listen()
 }
 
-func (cb *MasterConnection) sendLoop() {
+func (mc MasterConnection) sendHeartbeat() {
+	for {
+		mc.send <- mc.PrepareMsg(NewPayload("alive", cmd))
+		time.Sleep(5 * time.Second)
+	}
+}
 
-	for msg := range cb.send {
+func (mc *MasterConnection) sendLoop() {
+
+	for msg := range mc.send {
 
 		fmt.Println("SENDING")
 
-		if strings.Compare(cb.sendAddr.String(), "") == 0 {
-			cb.logger.Fatal("Destination is not set")
+		if strings.Compare(mc.sendAddr.String(), "") == 0 {
+			mc.logger.Fatal("Destination is not set")
 		}
 
-		conn, err := net.Dial("tcp", cb.sendAddr.String())
+		conn, err := net.Dial("tcp", mc.sendAddr.String())
 		if err != nil {
-			cb.logger.Fatal("Failed to connect to "+cb.sendAddr.String(), "\n", err)
+			mc.logger.Fatal("Failed to connect to "+mc.sendAddr.String(), "\n", err)
 		}
 
 		_, err = conn.Write([]byte(msg.Compile()))
 		if err != nil {
-			cb.logger.Fatal("Failed to write")
+			mc.logger.Fatal("Failed to write")
 		}
 		conn.Close()
 	}
 }
 
-func (cb *MasterConnection) receiveLoop(c chan<- *Payload) {
-	for msg := range cb.receive {
+func (mc *MasterConnection) receiveLoop(c chan<- *Payload) {
+	for msg := range mc.receive {
 
 		if msg.payload.ptype == network {
-			cb.logger.Println("Received network related Message:", msg.payload.ReadData())
+			mc.logger.Println("Received network related Message:", msg.payload.ReadData())
 
 			// TODO handle network changes
 			// -----------------------------------
@@ -113,25 +126,25 @@ func (cb *MasterConnection) receiveLoop(c chan<- *Payload) {
 	}
 }
 
-func (cb *MasterConnection) Listen() {
-	ln, err := net.Listen("tcp", cb.addr.String())
+func (mc *MasterConnection) Listen() {
+	ln, err := net.Listen("tcp", mc.addr.String())
 	if err != nil {
 		panic(err)
 	}
 	defer ln.Close()
 
-	cb.logger.Println("Listening on ", cb.addr.String())
+	mc.logger.Println("Listening on ", mc.addr.String())
 	for {
 
 		conn, err := ln.Accept()
 		if err != nil {
 			panic(err)
 		}
-		go cb.handleConnection(conn)
+		go mc.handleConnection(conn)
 	}
 }
 
-func (cb *MasterConnection) handleConnection(conn net.Conn) {
+func (mc *MasterConnection) handleConnection(conn net.Conn) {
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 
@@ -139,12 +152,12 @@ func (cb *MasterConnection) handleConnection(conn net.Conn) {
 
 	_, err := conn.Read(buf)
 	if err != nil {
-		cb.logger.Println("Error reading:", err.Error())
+		mc.logger.Println("Error reading:", err.Error())
 	}
 	msg, err := ParseMessage(string(buf))
 	if err != nil {
-		cb.logger.Fatal(err)
+		mc.logger.Fatal(err)
 	}
-	cb.receive <- msg
+	mc.receive <- msg
 	conn.Close()
 }

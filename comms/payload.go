@@ -2,6 +2,7 @@ package comms
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -32,9 +33,24 @@ func (pt PayloadType) String() string {
 	return ""
 }
 
+func StringToPayloadType(s string) PayloadType {
+
+	if strings.Compare(s, "cmd") == 0 {
+		return cmd
+	} else if strings.Compare(s, "dat") == 0 {
+		return dat
+	} else if strings.Compare(s, "def") == 0 {
+		return def
+	} else if strings.Compare(s, "network") == 0 {
+		return network
+	}
+	return bad
+}
+
 func ParsePayloadType(s string) PayloadType {
 	si, err := strconv.Atoi(s)
 	if err != nil {
+		fmt.Println("Yep this is the error")
 		log.Fatal(err)
 	}
 

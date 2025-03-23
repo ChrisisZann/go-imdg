@@ -5,6 +5,7 @@ import (
 	"go-imdg/config"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Master struct {
@@ -19,25 +20,31 @@ type Master struct {
 
 type netSlave struct {
 	connection *comms.SlaveConnection
-	heartbeat
+	*heartbeat
 }
 
-func (m *Master) addSlave(dest string, destPort string) {
+func (m Master) exists_slave(cmpID int) bool {
+	_, ok := m.slaveTopology[cmpID]
+	if ok {
+		return true
+	}
+	return false
+}
+
+func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
 
 	tmp := netSlave{
 		connection: comms.NewSlaveConnection(
 			comms.NewNodeAddr("tcp", m.Hostname+":"+m.LPort),
-			comms.NewNodeAddr("tcp", dest+":"+destPort),
+			dest,
 			strconv.Itoa(m.id),
 			m.Logger,
 		),
-		heartbeat: heartbeat{
-			alive: true,
-		}}
+		heartbeat: newHeartbeat()}
 
 	m.Logger.Println("Adding slave to topology")
-	m.slaveTopology[tmp.connection.GetID()] = &tmp
-	m.slaveTopology[tmp.connection.GetID()].connection.OpenSendChannel()
+	m.slaveTopology[sid] = &tmp
+	m.slaveTopology[sid].connection.OpenSendChannel()
 }
 
 func (m Master) CompileHeader(dest string) string {
@@ -65,6 +72,7 @@ func NewMaster(cfg config.Node) *Master {
 func (m *Master) Start() {
 
 	go m.ReceiveHandler()
+	go m.checkHeartbeatLoop()
 	m.Listen(m.Receiver)
 
 }
@@ -73,7 +81,24 @@ func (m *Master) ReceiveHandler() {
 
 	for msg := range m.Receiver {
 		m.Logger.Printf("Received Message: <%s>\n", msg)
-		m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
-		m.Logger.Println("Received Payload Data:", msg.ReadPayloadData())
+		m.Logger.Println("Sender:", msg.ReadSenderID())
+
+		if !m.exists_slave(msg.ReadSenderID()) {
+			m.Logger.Println("Received message from:", msg.ReadDest())
+			m.Logger.Println("i am :", m.Hostname+":"+m.LPort)
+			m.addSlave(msg.ReadSender(), msg.ReadSenderID())
+		} else {
+			m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
+			m.Logger.Println("Received Payload Data:", msg.ReadPayloadData())
+
+			// Message Decoder
+			if msg.GetPayloadType() == comms.StringToPayloadType("cmd") {
+
+				if strings.Compare(msg.ReadPayloadData(), "alive") == 0 {
+					m.Logger.Println("Received heartbeat from", msg.ReadSenderID())
+					m.slaveTopology[msg.ReadSenderID()].alive = true
+				}
+			}
+		}
 	}
 }

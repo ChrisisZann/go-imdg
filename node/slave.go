@@ -5,6 +5,7 @@ import (
 	"go-imdg/config"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Slave struct {
@@ -20,7 +21,7 @@ func (s Slave) CompileHeader(dest string) string {
 	return comms.CompileHeader(s.Hostname, strconv.Itoa(s.id), dest)
 }
 
-func (s *Slave) NewCB(dest string, destPort string) {
+func (s *Slave) NewMasterConnection(dest string, destPort string) {
 
 	s.Logger.Println("Creating new connection...")
 
@@ -28,6 +29,7 @@ func (s *Slave) NewCB(dest string, destPort string) {
 		comms.NewNodeAddr("tcp", s.Hostname+":"+s.LPort),
 		comms.NewNodeAddr("tcp", dest+":"+destPort),
 		strconv.Itoa(s.id),
+		5*time.Second,
 		s.Logger,
 	)
 }
