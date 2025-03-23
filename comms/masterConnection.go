@@ -9,40 +9,43 @@ import (
 	"strings"
 )
 
-type SlaveConnection struct {
+// Master Connection support 2-way communication
+type MasterConnection struct {
 	addr     NodeAddr
 	sendAddr NodeAddr
 
 	id     int
 	header string
 
-	send chan *Message
+	send    chan *Message
+	receive chan *Message
 
 	logger *log.Logger
 }
 
-func NewSlaveConnection(src, dest NodeAddr, suid string, l *log.Logger) *SlaveConnection {
+func NewMasterConnection(src, dest NodeAddr, suid string, l *log.Logger) *MasterConnection {
 	i_suid, err := strconv.Atoi(suid)
 	if err != nil {
 		l.Fatalln("Failed to convert suid to int")
 		return nil
 	}
 
-	return &SlaveConnection{
+	return &MasterConnection{
 		addr:     src,
 		sendAddr: dest,
 		id:       i_suid,
 		header:   CompileHeader(src.String(), suid, dest.String()),
 		send:     make(chan *Message, 10),
+		receive:  make(chan *Message, 10),
 		logger:   l,
 	}
 }
 
-func (cb SlaveConnection) GetID() int {
+func (cb MasterConnection) GetID() int {
 	return cb.id
 }
 
-func (cb SlaveConnection) PrepareMsg(p *Payload) *Message {
+func (cb MasterConnection) PrepareMsg(p *Payload) *Message {
 	return &Message{
 		source:      cb.addr,
 		suid:        os.Getpid(),
@@ -51,19 +54,26 @@ func (cb SlaveConnection) PrepareMsg(p *Payload) *Message {
 	}
 }
 
-func (cb *SlaveConnection) SendPayload(p *Payload) {
+// func SendCMD
+// func SendData
+// func SendDef
+
+func (cb *MasterConnection) SendPayload(p *Payload) {
 	cb.send <- cb.PrepareMsg(p)
 }
 
-func (cb *SlaveConnection) SendMsg(msg *Message) {
+func (cb *MasterConnection) SendMsg(msg *Message) {
 	cb.send <- msg
 }
 
-func (cb *SlaveConnection) OpenSendChannel() {
+func (cb *MasterConnection) StartMasterConnectionLoop(c chan *Payload) {
+
 	go cb.sendLoop()
+	go cb.receiveLoop(c)
+	// cb.listen()
 }
 
-func (cb *SlaveConnection) sendLoop() {
+func (cb *MasterConnection) sendLoop() {
 
 	for msg := range cb.send {
 
@@ -84,4 +94,57 @@ func (cb *SlaveConnection) sendLoop() {
 		}
 		conn.Close()
 	}
+}
+
+func (cb *MasterConnection) receiveLoop(c chan<- *Payload) {
+	for msg := range cb.receive {
+
+		if msg.payload.ptype == network {
+			cb.logger.Println("Received network related Message:", msg.payload.ReadData())
+
+			// TODO handle network changes
+			// -----------------------------------
+
+			// -----------------------------------
+
+		} else {
+			c <- msg.payload
+		}
+	}
+}
+
+func (cb *MasterConnection) Listen() {
+	ln, err := net.Listen("tcp", cb.addr.String())
+	if err != nil {
+		panic(err)
+	}
+	defer ln.Close()
+
+	cb.logger.Println("Listening on ", cb.addr.String())
+	for {
+
+		conn, err := ln.Accept()
+		if err != nil {
+			panic(err)
+		}
+		go cb.handleConnection(conn)
+	}
+}
+
+func (cb *MasterConnection) handleConnection(conn net.Conn) {
+	// Make a buffer to hold incoming data.
+	buf := make([]byte, 1024)
+
+	//should make loop? to read multiple messages?
+
+	_, err := conn.Read(buf)
+	if err != nil {
+		cb.logger.Println("Error reading:", err.Error())
+	}
+	msg, err := ParseMessage(string(buf))
+	if err != nil {
+		cb.logger.Fatal(err)
+	}
+	cb.receive <- msg
+	conn.Close()
 }
