@@ -53,7 +53,11 @@ func (cb SlaveConnection) PrepareMsg(p *Payload) *Message {
 }
 
 func (cb *SlaveConnection) SendPing() {
-	cb.send <- cb.PrepareMsg(NewPayload("ping", cmd))
+	p, err := NewPayload("ping", "cmd")
+	if err != nil {
+		cb.logger.Panicln("failed to create ping payload")
+	}
+	cb.send <- cb.PrepareMsg(p)
 }
 
 func (cb *SlaveConnection) SendPayload(p *Payload) {

@@ -14,8 +14,8 @@ const (
 	cmd PayloadType = iota
 	dat
 	network
-	bad
 	def
+	bad
 )
 
 /* ********************************************************************************
@@ -24,11 +24,13 @@ const (
  * ********************************************************************************/
 func (pt PayloadType) String() string {
 	if pt == cmd {
-		return "0"
+		return "cmd"
 	} else if pt == dat {
-		return "1"
+		return "dat"
 	} else if pt == def {
-		return "3"
+		return "def"
+	} else if pt == network {
+		return "network"
 	}
 	return ""
 }
@@ -58,6 +60,8 @@ func ParsePayloadType(s string) PayloadType {
 		return cmd
 	} else if si == 1 {
 		return dat
+	} else if si == 2 {
+		return network
 	} else if si == 3 {
 		return def
 	}
@@ -70,11 +74,21 @@ type Payload struct {
 	// delim string
 }
 
-func NewPayload(s string, pt PayloadType) *Payload {
-	return &Payload{
-		ptype: pt,
-		data:  s,
+func NewPayload(d, pt string) (*Payload, error) {
+
+	if !validatePayloadData(d) {
+		return nil, errors.New("bad payload data")
 	}
+
+	pType := StringToPayloadType(pt)
+	if pType == bad {
+		return nil, errors.New("bad payload type")
+	}
+
+	return &Payload{
+		ptype: pType,
+		data:  d,
+	}, nil
 }
 
 func (p Payload) ReadType() PayloadType {
@@ -83,46 +97,30 @@ func (p Payload) ReadType() PayloadType {
 
 func (p Payload) ReadData() string {
 
-	// Emit zeros in buffer the Message
-	trimmed := strings.Trim(p.data, "\x00")
-	return trimmed
+	// Emit zeros in buffer of Message
+	return strings.Trim(p.data, "\x00")
 }
 
 func (p Payload) String() string {
 
 	// Emit zeros in buffer the Message
-	trimmed := strings.Trim(p.data, "\x00")
-
-	switch p.ptype {
-	case cmd:
-		return "cmd:" + trimmed
-	case dat:
-		return "data:" + trimmed
-	case def:
-		return "def:" + trimmed
-	default:
-		return "bad payload"
-	}
+	return p.ReadType().String() + ":" + strings.Trim(p.data, "\x00")
 }
 
 func (p Payload) Compile() (string, error) {
-	if !p.validate() {
-		return "", errors.New("failed to compile payload validations")
-	}
 	return p.ptype.String() + ":" + p.data, nil
 	// return []byte(p.ptype.String() + p.delim + p.data), nil
-
 }
 
-func (p Payload) validate() bool {
-	// TODO
+func validatePayloadData(s string) bool {
+
+	if strings.Contains(s, " ") {
+		return false
+	} else if strings.Contains(s, ":") {
+		return false
+	}
 	return true
 }
-
-// func (p Payload) ParseCmd() VarFSM {
-// 	// TODO
-// 	return true
-// }
 
 func ParsePayload(s string) *Payload {
 	tok := strings.Split(s, ":")
@@ -131,7 +129,7 @@ func ParsePayload(s string) *Payload {
 		return nil
 	}
 	return &Payload{
-		ptype: ParsePayloadType(tok[0]),
+		ptype: StringToPayloadType(tok[0]),
 		data:  tok[1],
 	}
 }

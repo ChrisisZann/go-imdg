@@ -43,7 +43,11 @@ func main() {
 			fmt.Scan(&Message)
 
 			// s.MasterConnection.SendMsg(s.PrepareMsg(comms.NewPayload(Message, comms.PayloadType(0))))
-			s.MasterConnection.SendPayload(comms.NewPayload(Message, comms.PayloadType(0)))
+			p, err := comms.NewPayload(Message, "cmd")
+			if err != nil {
+				log.Fatalln("Failed to create new payload")
+			}
+			s.MasterConnection.SendPayload(p)
 		}
 
 		// s.MasterConnection.Send <- s.PrepareMsg(comms.NewPayload("Hello", comms.PayloadType(0)))

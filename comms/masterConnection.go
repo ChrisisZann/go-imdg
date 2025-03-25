@@ -73,7 +73,7 @@ func (mc *MasterConnection) SendMsg(msg *Message) {
 func (mc *MasterConnection) StartMasterConnectionLoop(c chan *Payload) {
 
 	go mc.sendLoop()
-	go mc.receiveLoop(c)
+	go mc.receiveDecoder(c)
 	go mc.sendHeartbeat()
 
 	// mc.listen()
@@ -81,7 +81,11 @@ func (mc *MasterConnection) StartMasterConnectionLoop(c chan *Payload) {
 
 func (mc MasterConnection) sendHeartbeat() {
 	for {
-		mc.send <- mc.PrepareMsg(NewPayload("alive", cmd))
+		p, err := NewPayload("alive", "cmd")
+		if err != nil {
+			mc.logger.Panicln("Failed to create heartbeat payload")
+		}
+		mc.send <- mc.PrepareMsg(p)
 		time.Sleep(5 * time.Second)
 	}
 }
@@ -109,7 +113,7 @@ func (mc *MasterConnection) sendLoop() {
 	}
 }
 
-func (mc *MasterConnection) receiveLoop(c chan<- *Payload) {
+func (mc *MasterConnection) receiveDecoder(c chan<- *Payload) {
 	for msg := range mc.receive {
 
 		if msg.payload.ptype == network {

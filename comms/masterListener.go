@@ -21,7 +21,7 @@ func NewMasterListener(src NodeAddr, l *log.Logger) *MasterListener {
 	}
 }
 
-func (ml *MasterListener) receiveLoop(c chan<- *Message) {
+func (ml *MasterListener) receiveDecoder(c chan<- *Message) {
 	for msg := range ml.receive {
 
 		if msg.payload.ptype == network {
@@ -33,23 +33,25 @@ func (ml *MasterListener) receiveLoop(c chan<- *Message) {
 			// -----------------------------------
 
 		} else {
+			// Send one level up
 			c <- msg
 		}
 	}
 }
 
-func (ml *MasterListener) Listen(rcvr chan *Message) {
+func (ml *MasterListener) Listen(receiveChannel chan *Message) {
 	ln, err := net.Listen("tcp", ml.addr.String())
 	if err != nil {
 		panic(err)
 	}
 	defer ln.Close()
 
-	go ml.receiveLoop(rcvr)
+	// Start message Listener decoder
+	go ml.receiveDecoder(receiveChannel)
 
+	// Listen on network
 	ml.logger.Println("Listening on ", ml.addr.String())
 	for {
-
 		conn, err := ln.Accept()
 		if err != nil {
 			panic(err)
