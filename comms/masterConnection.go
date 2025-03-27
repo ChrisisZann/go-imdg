@@ -105,7 +105,11 @@ func (mc *MasterConnection) sendLoop() {
 			mc.logger.Fatal("Failed to connect to "+mc.sendAddr.String(), "\n", err)
 		}
 
-		_, err = conn.Write([]byte(msg.Compile()))
+		compiledMsg, err := msg.Compile()
+		if err != nil {
+			mc.logger.Fatal("Failed to compile message:", err)
+		}
+		_, err = conn.Write([]byte(compiledMsg))
 		if err != nil {
 			mc.logger.Fatal("Failed to write")
 		}

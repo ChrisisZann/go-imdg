@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
+	"sync"
 )
 
 type Master struct {
@@ -17,6 +17,7 @@ type Master struct {
 	Receiver chan *comms.Message
 
 	slaveTopology map[int]*netSlave
+	topologyLock  sync.RWMutex
 }
 
 type netSlave struct {
@@ -24,28 +25,44 @@ type netSlave struct {
 	*heartbeat
 }
 
-func (m Master) exists_slave(cmpID int) bool {
+func (m *Master) exists_slave(cmpID int) bool {
 	_, ok := m.slaveTopology[cmpID]
 	return ok
 }
 
 func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
+	m.topologyLock.Lock()
+
+	addr, err := comms.NewNodeAddr("tcp", m.Hostname+":"+m.LPort)
+	if err != nil {
+		m.Logger.Fatal("Failed to create NodeAddr:", err)
+	}
 
 	tmp := netSlave{
 		connection: comms.NewSlaveConnection(
-			comms.NewNodeAddr("tcp", m.Hostname+":"+m.LPort),
+			addr,
 			dest,
 			strconv.Itoa(m.id),
 			m.Logger,
 		),
-		heartbeat: newHeartbeat()}
+		heartbeat: newHeartbeat(),
+	}
 
-	m.Logger.Println("Adding slave to topology")
 	m.slaveTopology[sid] = &tmp
-	m.slaveTopology[sid].connection.OpenSendChannel()
+	m.topologyLock.Unlock()
+
+	tmp.connection.OpenSendChannel()
+
+	p, err := comms.NewPayload("captured", "cmd")
+	if err != nil {
+		m.Logger.Fatal("Failed to create new payload")
+	}
+	m.BroadcastToSlaves(p)
+
+	m.Logger.Println("Added slave to topology")
 }
 
-func (m Master) CompileHeader(dest string) string {
+func (m *Master) CompileHeader(dest string) string {
 	return comms.CompileHeader(m.Hostname, strconv.Itoa(m.id), dest)
 }
 
@@ -55,11 +72,16 @@ func NewMaster(cfg config.Node) *Master {
 	cfg.Logger.Println("PID:", os.Getpid())
 	cfg.Logger.Println("CFG:", cfg)
 
+	newAddr, err := comms.NewNodeAddr("tcp", cfg.Hostname+":"+cfg.LPort)
+	if err != nil {
+		cfg.Logger.Fatal("Failed to create NodeAddr for master:", err)
+	}
+
 	return &Master{
 		id:   os.Getpid(),
 		Node: cfg,
 		MasterListener: *comms.NewMasterListener(
-			comms.NewNodeAddr("tcp", cfg.Hostname+":"+cfg.LPort),
+			newAddr,
 			cfg.Logger,
 		),
 		Receiver:      make(chan *comms.Message, 10),
@@ -73,6 +95,12 @@ func (m *Master) Start() {
 	go m.checkHeartbeatLoop()
 	m.Listen(m.Receiver)
 
+}
+
+func (m *Master) BroadcastToSlaves(p *comms.Payload) {
+	for i := range m.slaveTopology {
+		m.slaveTopology[i].connection.SendPayload(p)
+	}
 }
 
 func (m *Master) ReceiveHandler() {
@@ -94,8 +122,7 @@ func (m *Master) ReceiveHandler() {
 
 				if strings.Compare(msg.ReadPayloadData(), "alive") == 0 {
 					m.Logger.Println("Received heartbeat from", msg.ReadSenderID())
-					m.slaveTopology[msg.ReadSenderID()].alive = true
-					m.slaveTopology[msg.ReadSenderID()].lastPing = time.Now()
+					m.updateHeartbeat(msg.ReadSenderID(), true)
 				}
 			}
 		}

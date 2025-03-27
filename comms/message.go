@@ -2,7 +2,6 @@ package comms
 
 import (
 	"errors"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -13,6 +12,15 @@ type Message struct {
 	suid        int
 	destination NodeAddr
 	payload     *Payload
+}
+
+func NewMessage(source NodeAddr, suid int, destination NodeAddr, payload *Payload) *Message {
+	return &Message{
+		source:      source,
+		suid:        suid,
+		destination: destination,
+		payload:     payload,
+	}
 }
 
 func (m Message) ReadSender() NodeAddr {
@@ -43,19 +51,18 @@ func (m Message) String() string {
 	return "source=" + m.source.String() + ", suid=" + strconv.Itoa(m.suid) + ", payload=" + m.payload.String()
 }
 
-func (m Message) Compile() string {
-
+func (m Message) Compile() (string, error) {
 	pl, err := m.payload.Compile()
 	if err != nil {
-		log.Fatal("Failed to compile payload")
+		return "", err
 	}
-	return m.source.String() + "|" + strconv.Itoa(m.suid) + "|" + m.destination.String() + "|" + pl
+	return m.source.String() + "|" + strconv.Itoa(m.suid) + "|" + m.destination.String() + "|" + pl, nil
 }
 
 func ParseMessage(input string) (*Message, error) {
 	tok := strings.Split(input, "|")
 	if len(tok) != 4 {
-		return nil, errors.New("wrong Message structure:" + strconv.Itoa(len(tok)))
+		return nil, errors.New("wrong Message structure: expected 4 parts, got " + strconv.Itoa(len(tok)) + " in input: " + input)
 	}
 
 	// DEBUGGING
@@ -63,20 +70,33 @@ func ParseMessage(input string) (*Message, error) {
 	// 	fmt.Printf("tok %d=%s\n", i, t)
 	// }
 
-	sourceAddr := NewNodeAddr("tcp", tok[0])
+	sourceAddr, err := NewNodeAddr("tcp", tok[0])
+	if err != nil {
+		return nil, err
+	}
 
 	uid, err := strconv.Atoi(tok[1])
 	if err != nil {
 		return nil, err
 	}
 
-	destAddr := NewNodeAddr("tcp", tok[2])
+	destAddr, err := NewNodeAddr("tcp", tok[2])
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO : PATCH payload first
+	// payload, err := ParsePayload(tok[3])
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return &Message{
 		source:      sourceAddr,
 		destination: destAddr,
 		suid:        uid,
 		payload:     ParsePayload(tok[3]),
+		// payload:     payload,
 	}, nil
 }
 

@@ -87,7 +87,11 @@ func (cb *SlaveConnection) sendLoop() {
 			cb.logger.Fatal("Failed to connect to "+cb.sendAddr.String(), "\n", err)
 		}
 
-		_, err = conn.Write([]byte(msg.Compile()))
+		compiledMsg, err := msg.Compile()
+		if err != nil {
+			cb.logger.Fatal("Failed to compile message: ", err)
+		}
+		_, err = conn.Write([]byte(compiledMsg))
 		if err != nil {
 			cb.logger.Fatal("Failed to write")
 		}

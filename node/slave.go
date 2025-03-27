@@ -25,9 +25,20 @@ func (s *Slave) NewMasterConnection(dest string, destPort string) {
 
 	s.Logger.Println("Creating new connection...")
 
+	srcAddr, err := comms.NewNodeAddr("tcp", s.Hostname+":"+s.LPort)
+	if err != nil {
+		s.Logger.Println("Error creating source address:", err)
+		return
+	}
+	desAddr, err := comms.NewNodeAddr("tcp", dest+":"+destPort)
+	if err != nil {
+		s.Logger.Println("Error creating destination address:", err)
+		return
+	}
+
 	s.MasterConnection = *comms.NewMasterConnection(
-		comms.NewNodeAddr("tcp", s.Hostname+":"+s.LPort),
-		comms.NewNodeAddr("tcp", dest+":"+destPort),
+		srcAddr,
+		desAddr,
 		strconv.Itoa(s.id),
 		5*time.Second,
 		s.Logger,

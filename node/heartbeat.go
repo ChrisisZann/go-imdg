@@ -1,6 +1,8 @@
 package node
 
-import "time"
+import (
+	"time"
+)
 
 type heartbeat struct {
 	alive    bool
@@ -14,21 +16,26 @@ func newHeartbeat() *heartbeat {
 	}
 }
 
-func (m Master) checkHeartbeatLoop() {
-	pingInterval := 15 * time.Second
-	// reviveAttempts := 3
-	for {
+func (m *Master) checkHeartbeatLoop() {
+	ticker := time.NewTicker(15 * time.Second) // Check every 15 seconds
+	defer ticker.Stop()
 
-		for ns := range m.slaveTopology {
-
-			if !m.slaveTopology[ns].heartbeat.alive {
-				m.Logger.Println("slave is dead:", m.slaveTopology[ns])
-				// Manage failure
-			} else {
-				m.Logger.Println("slave is alive:", m.slaveTopology[ns])
+	for range ticker.C {
+		for id, slave := range m.slaveTopology {
+			if time.Since(slave.lastPing) > 30*time.Second { // 30-second timeout
+				m.Logger.Printf("Slave %d is unresponsive. Marking as inactive.\n", id)
+				m.updateHeartbeat(id, false)
 			}
 		}
+	}
+}
 
-		time.Sleep(pingInterval)
+func (m *Master) updateHeartbeat(senderID int, flag bool) {
+	m.topologyLock.Lock()
+	defer m.topologyLock.Unlock()
+
+	if slave, ok := m.slaveTopology[senderID]; ok {
+		slave.alive = flag
+		slave.lastPing = time.Now()
 	}
 }

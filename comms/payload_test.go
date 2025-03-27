@@ -39,7 +39,9 @@ func TestPayloadReadType(t *testing.T) {
 	if err != nil {
 		t.Error(`NewPayload("my_data", "cmd") failed to create payload`)
 	}
-	if payload.ReadType() != cmd {
+	if payload == nil {
+		t.Error("ParsePayload(\"cmd:my_data\") returned nil payload")
+	} else if payload.ReadType() != cmd {
 		t.Errorf("Expected payload type to be %v, but got %v", cmd, payload.ReadType())
 	}
 }
@@ -57,10 +59,10 @@ func TestPayloadReadData(t *testing.T) {
 func TestParsePayload(t *testing.T) {
 	payloadStr := "cmd:my_data"
 	payload := ParsePayload(payloadStr)
+
 	if payload == nil {
-		t.Error(`ParsePayload("cmd:my_data") failed to parse payload`)
-	}
-	if payload.ReadType() != cmd {
+		t.Error("ParsePayload(\"cmd:my_data\") returned nil payload")
+	} else if payload.ReadType() != cmd {
 		t.Errorf("Expected payload type to be %v, but got %v", cmd, payload.ReadType())
 	}
 	if payload.ReadData() != "my_data" {
