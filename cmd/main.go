@@ -72,7 +72,12 @@ func main() {
 		s.Save([]byte("testing14"))
 
 		for i := 0; i < len(s.Page); i++ {
-			n.Logger.Println("Reading:", string(s.Read(i)))
+			data, err := s.Read(i)
+			if err != nil {
+				n.Logger.Println("Error reading data:", err)
+				continue
+			}
+			n.Logger.Println("Reading:", string(data))
 		}
 
 		n.Logger.Println("Page:", s)
