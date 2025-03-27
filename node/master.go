@@ -91,6 +91,8 @@ func NewMaster(cfg config.Node) *Master {
 
 func (m *Master) Start() {
 
+	m.initMasterCommands()
+
 	go m.ReceiveHandler()
 	go m.checkHeartbeatLoop()
 	m.Listen(m.Receiver)

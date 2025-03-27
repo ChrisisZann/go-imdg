@@ -1,2 +1,3 @@
 ./var/log/
 /var/log/
+*.txt

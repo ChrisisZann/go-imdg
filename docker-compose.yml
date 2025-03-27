@@ -1,0 +1,186 @@
+version: "3.9"
+
+services:
+  master:
+    image: go-imdg:latest
+    container_name: master
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/master.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    ports:
+      - "8080:8080" # Expose master port for external access
+    environment:
+      - NODE_TYPE=master
+      - HOSTNAME=master
+      - LISTENING_PORT=8080
+
+  slave1:
+    image: go-imdg:latest
+    container_name: slave1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave1.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave1
+      - LISTENING_PORT=8081
+
+  slave2:
+    image: go-imdg:latest
+    container_name: slave2
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave2.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave2
+      - LISTENING_PORT=8082
+
+  slave3:
+    image: go-imdg:latest
+    container_name: slave3
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave3.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave3
+      - LISTENING_PORT=8083
+
+  slave4:
+    image: go-imdg:latest
+    container_name: slave4
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave4.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave4
+      - LISTENING_PORT=8084
+
+  slave5:
+    image: go-imdg:latest
+    container_name: slave5
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave5.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave5
+      - LISTENING_PORT=8085
+
+  slave6:
+    image: go-imdg:latest
+    container_name: slave6
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave6.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave6
+      - LISTENING_PORT=8086
+
+  slave7:
+    image: go-imdg:latest
+    container_name: slave7
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave7.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave7
+      - LISTENING_PORT=8087
+
+  slave8:
+    image: go-imdg:latest
+    container_name: slave8
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave8.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave8
+      - LISTENING_PORT=8088
+
+  slave9:
+    image: go-imdg:latest
+    container_name: slave9
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["./cmd/main", "-config", "/config/slave9.json"]
+    volumes:
+      - ./config:/config
+    networks:
+      - imdg_network
+    environment:
+      - NODE_TYPE=slave
+      - MASTER_HOST=master
+      - MASTER_PORT=8080
+      - HOSTNAME=slave9
+      - LISTENING_PORT=8089
+
+networks:
+  imdg_network:
+    driver: bridge
