@@ -2,6 +2,12 @@ package node
 
 import "fmt"
 
+// Command defines the interface for communication commands.
+type Command interface {
+	Execute() error
+	Name() string
+}
+
 // CommandManager manages registered commands.
 type CommandManager struct {
 	commands map[string]Command
