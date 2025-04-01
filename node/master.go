@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Master struct {
@@ -47,6 +48,7 @@ func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
 		),
 		heartbeat: newHeartbeat(),
 	}
+	tmp.heartbeat.setCheckFrequency(30 * time.Second)
 
 	m.slaveTopology[sid] = &tmp
 	m.topologyLock.Unlock()
@@ -60,10 +62,6 @@ func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
 	m.BroadcastToSlaves(p)
 
 	m.Logger.Println("Added slave to topology")
-}
-
-func (m *Master) CompileHeader(dest string) string {
-	return comms.CompileHeader(m.Hostname, strconv.Itoa(m.id), dest)
 }
 
 func NewMaster(cfg config.Node) *Master {
@@ -83,6 +81,7 @@ func NewMaster(cfg config.Node) *Master {
 		MasterListener: *comms.NewMasterListener(
 			newAddr,
 			cfg.Logger,
+			10*time.Second,
 		),
 		Receiver:      make(chan *comms.Message, 10),
 		slaveTopology: make(map[int]*netSlave),
@@ -96,7 +95,6 @@ func (m *Master) Start() {
 	go m.ReceiveHandler()
 	go m.checkHeartbeatLoop()
 	m.Listen(m.Receiver)
-
 }
 
 func (m *Master) BroadcastToSlaves(p *comms.Payload) {

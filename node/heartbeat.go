@@ -4,16 +4,24 @@ import (
 	"time"
 )
 
+const DEFAULT_FREQUENCY = 30 * time.Second
+
 type heartbeat struct {
-	alive    bool
-	lastPing time.Time
+	alive          bool
+	lastPing       time.Time
+	checkFrequency time.Duration
 }
 
 func newHeartbeat() *heartbeat {
 	return &heartbeat{
-		alive:    false,
-		lastPing: time.Now(),
+		alive:          false,
+		lastPing:       time.Now(),
+		checkFrequency: DEFAULT_FREQUENCY,
 	}
+}
+
+func (h *heartbeat) setCheckFrequency(f time.Duration) {
+	h.checkFrequency = f
 }
 
 func (m *Master) checkHeartbeatLoop() {
@@ -22,7 +30,7 @@ func (m *Master) checkHeartbeatLoop() {
 
 	for range ticker.C {
 		for id, slave := range m.slaveTopology {
-			if time.Since(slave.lastPing) > 30*time.Second { // 30-second timeout
+			if time.Since(slave.lastPing) > DEFAULT_FREQUENCY { // 30-second timeout
 				m.Logger.Printf("Slave %d is unresponsive. Marking as inactive.\n", id)
 				m.updateHeartbeat(id, false)
 			}

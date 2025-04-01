@@ -3,7 +3,10 @@ package comms
 import (
 	"log"
 	"net"
+	"time"
 )
+
+const DEFAULT_LISTENER_HANDLER_TIMEOUT = 10 * time.Second
 
 type MasterListener struct {
 	addr NodeAddr
@@ -11,13 +14,16 @@ type MasterListener struct {
 	receive chan *Message
 
 	logger *log.Logger
+
+	handlerTimeout time.Duration
 }
 
-func NewMasterListener(src NodeAddr, l *log.Logger) *MasterListener {
+func NewMasterListener(src NodeAddr, l *log.Logger, t time.Duration) *MasterListener {
 	return &MasterListener{
-		addr:    src,
-		receive: make(chan *Message, 10),
-		logger:  l,
+		addr:           src,
+		receive:        make(chan *Message, 10),
+		logger:         l,
+		handlerTimeout: t,
 	}
 }
 
@@ -56,13 +62,18 @@ func (ml *MasterListener) Listen(receiveChannel chan *Message) {
 		if err != nil {
 			panic(err)
 		}
+
 		go ml.handleConnection(conn)
 	}
 }
 
 func (ml *MasterListener) handleConnection(conn net.Conn) {
+	defer conn.Close()
+
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
+
+	conn.SetDeadline(time.Now().Add(ml.handlerTimeout))
 
 	_, err := conn.Read(buf)
 	if err != nil {
@@ -73,5 +84,4 @@ func (ml *MasterListener) handleConnection(conn net.Conn) {
 		ml.logger.Fatal(err)
 	}
 	ml.receive <- msg
-	conn.Close()
 }

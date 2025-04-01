@@ -14,8 +14,7 @@ type SlaveConnection struct {
 	addr     NodeAddr
 	sendAddr NodeAddr
 
-	id     int
-	header string
+	id int
 
 	send chan *Message
 
@@ -33,7 +32,6 @@ func NewSlaveConnection(src, dest NodeAddr, suid string, l *log.Logger) *SlaveCo
 		addr:     src,
 		sendAddr: dest,
 		id:       i_suid,
-		header:   CompileHeader(src.String(), suid, dest.String()),
 		send:     make(chan *Message, 10),
 		logger:   l,
 	}

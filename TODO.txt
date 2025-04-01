@@ -1,2 +1,3 @@
 Q: MasterConnection handleConnection : make loop to read multiple messages in sequence?
 
+-> use Context for pass request-scoped values
