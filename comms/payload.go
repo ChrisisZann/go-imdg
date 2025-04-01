@@ -122,14 +122,13 @@ func validatePayloadData(s string) bool {
 	return true
 }
 
-func ParsePayload(s string) *Payload {
+func ParsePayload(s string) (*Payload, error) {
 	tok := strings.Split(s, ":")
 	if len(tok) != 2 {
-		log.Fatal("wrong payload structure")
-		return nil
+		return nil, errors.New("wrong payload structure")
 	}
 	return &Payload{
 		ptype: StringToPayloadType(tok[0]),
 		data:  tok[1],
-	}
+	}, nil
 }

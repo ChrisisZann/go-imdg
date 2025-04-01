@@ -10,7 +10,7 @@ import (
 
 const DEFAULT_LISTENER_HANDLER_TIMEOUT = 10 * time.Second
 
-type NetworkListener struct {
+type NetworkReader struct {
 	addr NodeAddr
 
 	receive chan *Message
@@ -20,8 +20,8 @@ type NetworkListener struct {
 	handlerTimeout time.Duration
 }
 
-func NewMasterListener(src NodeAddr, l *log.Logger, t time.Duration) *NetworkListener {
-	return &NetworkListener{
+func NewNetworkReader(src NodeAddr, l *log.Logger, t time.Duration) *NetworkReader {
+	return &NetworkReader{
 		addr:           src,
 		receive:        make(chan *Message, 10),
 		logger:         l,
@@ -29,7 +29,11 @@ func NewMasterListener(src NodeAddr, l *log.Logger, t time.Duration) *NetworkLis
 	}
 }
 
-func (ml *NetworkListener) receiveDecoder(c chan<- *Message) {
+func (nr NetworkReader) GetAddr() NodeAddr {
+	return nr.addr
+}
+
+func (ml *NetworkReader) receiveDecoder(c chan<- *Message) {
 	for msg := range ml.receive {
 
 		if msg.payload.ptype == network {
@@ -47,7 +51,7 @@ func (ml *NetworkListener) receiveDecoder(c chan<- *Message) {
 	}
 }
 
-func (ml *NetworkListener) Listen(receiveChannel chan *Message) {
+func (ml *NetworkReader) Listen(ctx context.Context, receiveChannel chan *Message) {
 	ln, err := net.Listen("tcp", ml.addr.String())
 	if err != nil {
 		panic(err)
@@ -56,9 +60,6 @@ func (ml *NetworkListener) Listen(receiveChannel chan *Message) {
 
 	// Start message Listener decoder
 	go ml.receiveDecoder(receiveChannel)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Listen on network
 	ml.logger.Println("Listening on ", ml.addr.String())
@@ -72,7 +73,7 @@ func (ml *NetworkListener) Listen(receiveChannel chan *Message) {
 	}
 }
 
-func (ml *NetworkListener) handleConnection(ctx context.Context, conn net.Conn) {
+func (ml *NetworkReader) handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
 	ml.logger.Println("starting new handler...")

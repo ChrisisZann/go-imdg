@@ -65,11 +65,6 @@ func ParseMessage(input string) (*Message, error) {
 		return nil, errors.New("wrong Message structure: expected 4 parts, got " + strconv.Itoa(len(tok)) + " in input: " + input)
 	}
 
-	// DEBUGGING
-	// for i, t := range tok {
-	// 	fmt.Printf("tok %d=%s\n", i, t)
-	// }
-
 	sourceAddr, err := NewNodeAddr("tcp", tok[0])
 	if err != nil {
 		return nil, err
@@ -85,17 +80,16 @@ func ParseMessage(input string) (*Message, error) {
 		return nil, err
 	}
 
-	// TODO : PATCH payload first
-	// payload, err := ParsePayload(tok[3])
-	// if err != nil {
-	// 	return nil, err
-	// }
+	p, err := ParsePayload(tok[3])
+	if err != nil {
+		return nil, err
+	}
 
 	return &Message{
 		source:      sourceAddr,
 		destination: destAddr,
 		suid:        uid,
-		payload:     ParsePayload(tok[3]),
+		payload:     p,
 		// payload:     payload,
 	}, nil
 }

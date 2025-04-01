@@ -1,6 +1,8 @@
 package node
 
 import (
+	"context"
+	"fmt"
 	"go-imdg/comms"
 	"go-imdg/config"
 	"os"
@@ -13,13 +15,127 @@ import (
 type Master struct {
 	id int
 
+	// Comms
 	config.Node
-	comms.NetworkListener
+	comms.NetworkReader
 	Receiver chan *comms.Message
 
+	// Topology
 	slaveTopology map[int]*netSlave
 	topologyLock  sync.RWMutex
+
+	// Context params
+	ctx    context.Context
+	cancel func()
 }
+
+func NewMaster(cfg config.Node) *Master {
+
+	cfg.Logger.Println("Setting up new master...")
+	cfg.Logger.Println("PID:", os.Getpid())
+	cfg.Logger.Println("CFG:", cfg)
+
+	newAddr, err := comms.NewNodeAddr("tcp", cfg.Hostname+":"+cfg.LPort)
+	if err != nil {
+		cfg.Logger.Fatal("Failed to create NodeAddr for master:", err)
+	}
+
+	m, cf := context.WithCancel(context.Background())
+
+	return &Master{
+		id:   os.Getpid(),
+		Node: cfg,
+		NetworkReader: *comms.NewNetworkReader(
+			newAddr,
+			cfg.Logger,
+			10*time.Second,
+		),
+		Receiver:      make(chan *comms.Message, 10),
+		slaveTopology: make(map[int]*netSlave),
+		ctx:           m,
+		cancel:        cf,
+	}
+}
+
+func (m *Master) Start() {
+
+	m.initMasterCommands()
+
+	go m.ReceiveHandler()
+	go m.checkHeartbeatLoop()
+	go m.userInput()
+
+	m.Listen(m.ctx, m.Receiver)
+}
+
+func (m *Master) BroadcastToSlaves(p *comms.Payload) {
+	for i := range m.slaveTopology {
+		m.slaveTopology[i].connection.SendPayload(p)
+	}
+}
+
+func (m *Master) ReceiveHandler() {
+
+	for {
+		select {
+		case msg := <-m.Receiver:
+			m.Logger.Printf("Received Message: <%s>\n", msg)
+			// m.Logger.Println("Sender:", msg.ReadSenderID())
+
+			if !m.exists_slave(msg.ReadSenderID()) {
+				m.Logger.Println("Received message from:", msg.ReadDest())
+				m.Logger.Println("i am :", m.Hostname+":"+m.LPort)
+				m.addSlave(msg.ReadSender(), msg.ReadSenderID())
+			} else {
+				// m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
+				// m.Logger.Println("Received Payload Data:", msg.ReadPayloadData())
+
+				// Message Decoder
+				if msg.GetPayloadType() == comms.StringToPayloadType("cmd") {
+
+					if strings.Compare(msg.ReadPayloadData(), "alive") == 0 {
+						m.Logger.Println("Received heartbeat from", msg.ReadSenderID())
+						m.updateHeartbeat(msg.ReadSenderID(), true)
+					}
+				}
+			}
+		case <-m.ctx.Done():
+			m.Logger.Println("Stopping Receive Handler...")
+			return
+		}
+	}
+}
+
+func (m *Master) userInput() {
+	for {
+		select {
+		case <-m.ctx.Done():
+			m.Logger.Println("Stopping user input routine...")
+			return
+		default:
+			var userInput string
+			fmt.Print("Enter command:")
+			fmt.Scan(&userInput)
+
+			p, err := comms.NewPayload(userInput, "cmd")
+			if err != nil {
+				m.Logger.Println("error - cant create payload from user")
+				m.Logger.Println("Closing user input routine...")
+				return
+			}
+
+			msg := comms.NewMessage(
+				comms.NodeAddr{},
+				0,
+				m.GetAddr(),
+				p,
+			)
+			m.Receiver <- msg
+		}
+	}
+}
+
+//========================================================================================================================
 
 type netSlave struct {
 	connection *comms.NetworkWriter
@@ -40,7 +156,7 @@ func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
 	}
 
 	tmp := netSlave{
-		connection: comms.NewSlaveConnection(
+		connection: comms.NewNetworkWriter(
 			addr,
 			dest,
 			strconv.Itoa(m.id),
@@ -62,69 +178,4 @@ func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
 	m.BroadcastToSlaves(p)
 
 	m.Logger.Println("Added slave to topology")
-}
-
-func NewMaster(cfg config.Node) *Master {
-
-	cfg.Logger.Println("Setting up new master...")
-	cfg.Logger.Println("PID:", os.Getpid())
-	cfg.Logger.Println("CFG:", cfg)
-
-	newAddr, err := comms.NewNodeAddr("tcp", cfg.Hostname+":"+cfg.LPort)
-	if err != nil {
-		cfg.Logger.Fatal("Failed to create NodeAddr for master:", err)
-	}
-
-	return &Master{
-		id:   os.Getpid(),
-		Node: cfg,
-		NetworkListener: *comms.NewMasterListener(
-			newAddr,
-			cfg.Logger,
-			10*time.Second,
-		),
-		Receiver:      make(chan *comms.Message, 10),
-		slaveTopology: make(map[int]*netSlave),
-	}
-}
-
-func (m *Master) Start() {
-
-	m.initMasterCommands()
-
-	go m.ReceiveHandler()
-	go m.checkHeartbeatLoop()
-	m.Listen(m.Receiver)
-}
-
-func (m *Master) BroadcastToSlaves(p *comms.Payload) {
-	for i := range m.slaveTopology {
-		m.slaveTopology[i].connection.SendPayload(p)
-	}
-}
-
-func (m *Master) ReceiveHandler() {
-
-	for msg := range m.Receiver {
-		m.Logger.Printf("Received Message: <%s>\n", msg)
-		// m.Logger.Println("Sender:", msg.ReadSenderID())
-
-		if !m.exists_slave(msg.ReadSenderID()) {
-			m.Logger.Println("Received message from:", msg.ReadDest())
-			m.Logger.Println("i am :", m.Hostname+":"+m.LPort)
-			m.addSlave(msg.ReadSender(), msg.ReadSenderID())
-		} else {
-			// m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
-			// m.Logger.Println("Received Payload Data:", msg.ReadPayloadData())
-
-			// Message Decoder
-			if msg.GetPayloadType() == comms.StringToPayloadType("cmd") {
-
-				if strings.Compare(msg.ReadPayloadData(), "alive") == 0 {
-					m.Logger.Println("Received heartbeat from", msg.ReadSenderID())
-					m.updateHeartbeat(msg.ReadSenderID(), true)
-				}
-			}
-		}
-	}
 }

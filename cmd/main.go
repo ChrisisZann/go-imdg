@@ -78,7 +78,7 @@ func main() {
 			n.Logger.Println("Reading:", string(data))
 		}
 
-		n.Logger.Println("Page:", s)
+		n.Logger.Println("Page:", &s)
 
 	} else {
 		log.Panicln("Bad node type")

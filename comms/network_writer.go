@@ -22,7 +22,7 @@ type NetworkWriter struct {
 	logger *log.Logger
 }
 
-func NewSlaveConnection(src, dest NodeAddr, suid string, l *log.Logger) *NetworkWriter {
+func NewNetworkWriter(src, dest NodeAddr, suid string, l *log.Logger) *NetworkWriter {
 	i_suid, err := strconv.Atoi(suid)
 	if err != nil {
 		l.Fatalln("Failed to convert suid to int")
@@ -38,7 +38,7 @@ func NewSlaveConnection(src, dest NodeAddr, suid string, l *log.Logger) *Network
 		return nil
 	}
 
-	return &NetworkWriter{
+	nw := &NetworkWriter{
 		addr:     src,
 		sendAddr: dest,
 		conn:     newConn,
@@ -46,6 +46,8 @@ func NewSlaveConnection(src, dest NodeAddr, suid string, l *log.Logger) *Network
 		send:     make(chan *Message, 10),
 		logger:   l,
 	}
+
+	return nw
 }
 
 func (cb NetworkWriter) GetID() int {

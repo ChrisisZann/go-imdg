@@ -58,7 +58,11 @@ func TestPayloadReadData(t *testing.T) {
 
 func TestParsePayload(t *testing.T) {
 	payloadStr := "cmd:my_data"
-	payload := ParsePayload(payloadStr)
+	payload, err := ParsePayload(payloadStr)
+	if err != nil {
+		t.Errorf("ParsePayload(\"%s\") returned an error: %v", payloadStr, err)
+		return
+	}
 
 	if payload == nil {
 		t.Error("ParsePayload(\"cmd:my_data\") returned nil payload")
