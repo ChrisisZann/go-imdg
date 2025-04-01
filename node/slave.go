@@ -39,7 +39,7 @@ func (s *Slave) NewMasterConnection(dest string, destPort string) {
 		return
 	}
 
-	s.NetworkRW = *comms.NewMasterConnection(
+	s.NetworkRW = *comms.NewNetworkRW(
 		srcAddr,
 		desAddr,
 		strconv.Itoa(s.id),

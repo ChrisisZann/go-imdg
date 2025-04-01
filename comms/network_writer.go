@@ -87,7 +87,7 @@ func (cb *NetworkWriter) sendLoop() {
 
 	for msg := range cb.send {
 
-		fmt.Println("SENDING")
+		// fmt.Println("SENDING")
 
 		if strings.Compare(cb.sendAddr.String(), "") == 0 {
 			cb.logger.Fatal("Destination is not set")

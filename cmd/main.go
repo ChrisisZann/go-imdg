@@ -27,7 +27,7 @@ func main() {
 
 		// Connection to master
 		s.NewMasterConnection("localhost", "3333")
-		fmt.Println("TESTING2:", s.NetworkRW)
+		// fmt.Println("TESTING2:", s.NetworkRW)
 
 		//
 		go s.ReceiveHandler()

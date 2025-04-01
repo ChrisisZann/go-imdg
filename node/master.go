@@ -27,6 +27,7 @@ type Master struct {
 	// Context params
 	ctx    context.Context
 	cancel func()
+	wg     sync.WaitGroup
 }
 
 func NewMaster(cfg config.Node) *Master {
@@ -61,11 +62,28 @@ func (m *Master) Start() {
 
 	m.initMasterCommands()
 
-	go m.ReceiveHandler()
-	go m.checkHeartbeatLoop()
-	go m.userInput()
+	m.wg.Add(3)
+	go func() {
+		defer m.wg.Done()
+		m.ReceiveHandler()
+	}()
+	go func() {
+		defer m.wg.Done()
+		m.checkHeartbeatLoop()
+	}()
+	go func() {
+		defer m.wg.Done()
+		m.userInput()
+	}()
 
 	m.Listen(m.ctx, m.Receiver)
+}
+
+func (m *Master) Stop() {
+	m.Logger.Println("Stopping Master...")
+	m.cancel()
+	m.wg.Wait()
+	m.Logger.Println("Master successfully shut down")
 }
 
 func (m *Master) BroadcastToSlaves(p *comms.Payload) {
@@ -75,16 +93,19 @@ func (m *Master) BroadcastToSlaves(p *comms.Payload) {
 }
 
 func (m *Master) ReceiveHandler() {
-
 	for {
 		select {
 		case msg := <-m.Receiver:
 			m.Logger.Printf("Received Message: <%s>\n", msg)
 			// m.Logger.Println("Sender:", msg.ReadSenderID())
-
-			if !m.exists_slave(msg.ReadSenderID()) {
+			if msg.ReadSenderID() == 0 {
+				// Internal message
+				if strings.Compare(msg.ReadPayloadData(), "stop") == 0 {
+					m.Stop()
+				}
+			} else if !m.exists_slave(msg.ReadSenderID()) {
 				m.Logger.Println("Received message from:", msg.ReadDest())
-				m.Logger.Println("i am :", m.Hostname+":"+m.LPort)
+				m.Logger.Println("I am:", m.Hostname+":"+m.LPort)
 				m.addSlave(msg.ReadSender(), msg.ReadSenderID())
 			} else {
 				// m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
@@ -92,7 +113,6 @@ func (m *Master) ReceiveHandler() {
 
 				// Message Decoder
 				if msg.GetPayloadType() == comms.StringToPayloadType("cmd") {
-
 					if strings.Compare(msg.ReadPayloadData(), "alive") == 0 {
 						m.Logger.Println("Received heartbeat from", msg.ReadSenderID())
 						m.updateHeartbeat(msg.ReadSenderID(), true)
@@ -100,7 +120,14 @@ func (m *Master) ReceiveHandler() {
 				}
 			}
 		case <-m.ctx.Done():
-			m.Logger.Println("Stopping Receive Handler...")
+			// Handle context cancellation gracefully
+			if err := m.ctx.Err(); err != nil {
+				if err == context.Canceled {
+					m.Logger.Println("ReceiveHandler: Context canceled, shutting down...")
+				} else {
+					m.Logger.Println("ReceiveHandler: Unexpected context error:", err)
+				}
+			}
 			return
 		}
 	}

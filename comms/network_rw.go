@@ -28,7 +28,7 @@ type NetworkRW struct {
 	logger *log.Logger
 }
 
-func NewMasterConnection(src, dest NodeAddr, suid string, hbInterval time.Duration, l *log.Logger) *NetworkRW {
+func NewNetworkRW(src, dest NodeAddr, suid string, hbInterval time.Duration, l *log.Logger) *NetworkRW {
 	i_suid, err := strconv.Atoi(suid)
 	if err != nil {
 		l.Fatalln("Failed to convert suid to int")
