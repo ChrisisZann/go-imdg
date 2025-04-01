@@ -1,7 +1,6 @@
 package comms
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -50,62 +49,71 @@ func NewNetworkWriter(src, dest NodeAddr, suid string, l *log.Logger) *NetworkWr
 	return nw
 }
 
-func (cb NetworkWriter) GetID() int {
-	return cb.id
+func (nw NetworkWriter) GetID() int {
+	return nw.id
 }
 
-func (cb NetworkWriter) PrepareMsg(p *Payload) *Message {
+func (nw NetworkWriter) PrepareMsg(p *Payload) *Message {
 	return &Message{
-		source:      cb.addr,
+		source:      nw.addr,
 		suid:        os.Getpid(),
-		destination: cb.sendAddr,
+		destination: nw.sendAddr,
 		payload:     p,
 	}
 }
 
-func (cb *NetworkWriter) SendPing() {
+func (nw *NetworkWriter) SendPing() {
 	p, err := NewPayload("ping", "cmd")
 	if err != nil {
-		cb.logger.Panicln("failed to create ping payload")
+		nw.logger.Panicln("failed to create ping payload")
 	}
-	cb.send <- cb.PrepareMsg(p)
+	nw.send <- nw.PrepareMsg(p)
 }
 
-func (cb *NetworkWriter) SendPayload(p *Payload) {
-	cb.send <- cb.PrepareMsg(p)
+func (nw *NetworkWriter) SendPayload(p *Payload) {
+	nw.send <- nw.PrepareMsg(p)
 }
 
-func (cb *NetworkWriter) SendMsg(msg *Message) {
-	cb.send <- msg
+func (nw *NetworkWriter) SendMsg(msg *Message) {
+	nw.send <- msg
 }
 
-func (cb *NetworkWriter) OpenSendChannel() {
-	go cb.sendLoop()
+func (nw *NetworkWriter) OpenSendChannel() {
+	go nw.sendLoop()
 }
 
-func (cb *NetworkWriter) sendLoop() {
+func (nw *NetworkWriter) sendLoop() {
 
-	for msg := range cb.send {
+	for msg := range nw.send {
 
 		// fmt.Println("SENDING")
 
-		if strings.Compare(cb.sendAddr.String(), "") == 0 {
-			cb.logger.Fatal("Destination is not set")
+		if strings.Compare(nw.sendAddr.String(), "") == 0 {
+			nw.logger.Fatal("Destination is not set")
 		}
 
-		conn, err := net.Dial("tcp", cb.sendAddr.String())
+		conn, err := net.Dial("tcp", nw.sendAddr.String())
 		if err != nil {
-			cb.logger.Fatal("Failed to connect to "+cb.sendAddr.String(), "\n", err)
+			nw.logger.Fatal("Failed to connect to "+nw.sendAddr.String(), "\n", err)
 		}
 
 		compiledMsg, err := msg.Compile()
 		if err != nil {
-			cb.logger.Fatal("Failed to compile message: ", err)
+			nw.logger.Fatal("Failed to compile message: ", err)
 		}
 		_, err = conn.Write([]byte(compiledMsg))
 		if err != nil {
-			cb.logger.Fatal("Failed to write")
+			nw.logger.Fatal("Failed to write")
 		}
 		conn.Close()
 	}
+}
+
+func (nw *NetworkWriter) CloseConn() {
+
+	err := nw.conn.Close()
+	if err != nil {
+		nw.logger.Println("error - Failed to close conn", err)
+	}
+
 }

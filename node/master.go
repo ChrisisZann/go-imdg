@@ -81,8 +81,22 @@ func (m *Master) Start() {
 
 func (m *Master) Stop() {
 	m.Logger.Println("Stopping Master...")
+
+	// Cancel the context to signal all goroutines to stop
 	m.cancel()
+
+	// Close the Receiver channel to unblock ReceiveHandler
+	close(m.Receiver)
+
+	m.topologyLock.Lock()
+	for _, slave := range m.slaveTopology {
+		slave.connection.CloseConn()
+	}
+	m.topologyLock.Unlock()
+
+	// Wait for all goroutines to finish
 	m.wg.Wait()
+
 	m.Logger.Println("Master successfully shut down")
 }
 
@@ -95,7 +109,12 @@ func (m *Master) BroadcastToSlaves(p *comms.Payload) {
 func (m *Master) ReceiveHandler() {
 	for {
 		select {
-		case msg := <-m.Receiver:
+		case msg, ok := <-m.Receiver:
+			if !ok {
+				m.Logger.Println("master receive channel closed, exiting handler...")
+				return
+			}
+
 			m.Logger.Printf("Received Message: <%s>\n", msg)
 			// m.Logger.Println("Sender:", msg.ReadSenderID())
 			if msg.ReadSenderID() == 0 {

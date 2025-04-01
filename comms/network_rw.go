@@ -56,15 +56,15 @@ func NewNetworkRW(src, dest NodeAddr, suid string, hbInterval time.Duration, l *
 	}
 }
 
-func (mc NetworkRW) GetID() int {
-	return mc.id
+func (nrw NetworkRW) GetID() int {
+	return nrw.id
 }
 
-func (mc NetworkRW) PrepareMsg(p *Payload) *Message {
+func (nrw NetworkRW) PrepareMsg(p *Payload) *Message {
 	return &Message{
-		source:      mc.addr,
+		source:      nrw.addr,
 		suid:        os.Getpid(),
-		destination: mc.sendAddr,
+		destination: nrw.sendAddr,
 		payload:     p,
 	}
 }
@@ -73,57 +73,57 @@ func (mc NetworkRW) PrepareMsg(p *Payload) *Message {
 // func SendData
 // func SendDef
 
-func (mc *NetworkRW) SendPayload(p *Payload) {
-	mc.send <- mc.PrepareMsg(p)
+func (nrw *NetworkRW) SendPayload(p *Payload) {
+	nrw.send <- nrw.PrepareMsg(p)
 }
 
-func (mc *NetworkRW) SendMsg(msg *Message) {
-	mc.send <- msg
+func (nrw *NetworkRW) SendMsg(msg *Message) {
+	nrw.send <- msg
 }
 
-func (mc *NetworkRW) StartMasterConnectionLoop(c chan *Payload) {
+func (nrw *NetworkRW) StartMasterConnectionLoop(c chan *Payload) {
 
-	go mc.sendLoop()
-	go mc.receiveDecoder(c)
-	go mc.sendHeartbeat()
+	go nrw.sendLoop()
+	go nrw.receiveDecoder(c)
+	go nrw.sendHeartbeat()
 
-	// mc.listen()
+	// nrw.listen()
 }
 
-func (mc NetworkRW) sendHeartbeat() {
+func (nrw NetworkRW) sendHeartbeat() {
 	for {
 		p, err := NewPayload("alive", "cmd")
 		if err != nil {
-			mc.logger.Panicln("Failed to create heartbeat payload")
+			nrw.logger.Panicln("Failed to create heartbeat payload")
 		}
-		mc.send <- mc.PrepareMsg(p)
+		nrw.send <- nrw.PrepareMsg(p)
 		time.Sleep(5 * time.Second)
 	}
 }
 
-func (mc *NetworkRW) sendLoop() {
+func (nrw *NetworkRW) sendLoop() {
 
-	for msg := range mc.send {
+	for msg := range nrw.send {
 
 		fmt.Println("SENDING")
 
 		compiledMsg, err := msg.Compile()
 		if err != nil {
-			mc.logger.Fatal("Failed to compile message:", err)
+			nrw.logger.Fatal("Failed to compile message:", err)
 		}
 
-		_, err = mc.conn.Write([]byte(compiledMsg))
+		_, err = nrw.conn.Write([]byte(compiledMsg))
 		if err != nil {
-			mc.logger.Fatal("Failed to write")
+			nrw.logger.Fatal("Failed to write")
 		}
 	}
 }
 
-func (mc *NetworkRW) receiveDecoder(c chan<- *Payload) {
-	for msg := range mc.receive {
+func (nrw *NetworkRW) receiveDecoder(c chan<- *Payload) {
+	for msg := range nrw.receive {
 
 		if msg.payload.ptype == network {
-			mc.logger.Println("Received network related Message:", msg.payload.ReadData())
+			nrw.logger.Println("Received network related Message:", msg.payload.ReadData())
 
 			// TODO handle network changes
 			// -----------------------------------
@@ -136,8 +136,8 @@ func (mc *NetworkRW) receiveDecoder(c chan<- *Payload) {
 	}
 }
 
-func (mc *NetworkRW) Listen() {
-	ln, err := net.Listen("tcp", mc.addr.String())
+func (nrw *NetworkRW) Listen() {
+	ln, err := net.Listen("tcp", nrw.addr.String())
 	if err != nil {
 		panic(err)
 	}
@@ -147,20 +147,20 @@ func (mc *NetworkRW) Listen() {
 	defer cancel()
 
 	// Listen on Network
-	mc.logger.Println("Listening on ", mc.addr.String())
+	nrw.logger.Println("Listening on ", nrw.addr.String())
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			panic(err)
 		}
-		go mc.handleConnection(ctx, conn)
+		go nrw.handleConnection(ctx, conn)
 	}
 }
 
-func (mc *NetworkRW) handleConnection(ctx context.Context, conn net.Conn) {
+func (nrw *NetworkRW) handleConnection(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 
-	mc.logger.Println("starting new network reader...")
+	nrw.logger.Println("starting new network reader...")
 
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
@@ -169,26 +169,26 @@ func (mc *NetworkRW) handleConnection(ctx context.Context, conn net.Conn) {
 
 		select {
 		case <-ctx.Done():
-			mc.logger.Println("context cancelled this handler", ctx.Err())
-			mc.logger.Println("stopping handler...")
+			nrw.logger.Println("context cancelled this handler", ctx.Err())
+			nrw.logger.Println("stopping handler...")
 			return
 		default:
 
 			n, err := conn.Read(buf)
 			if err != nil {
 				if err == io.EOF {
-					mc.logger.Println("Connection closed by master")
+					nrw.logger.Println("Connection closed by master")
 				} else {
-					mc.logger.Println("Error reading:", err.Error())
+					nrw.logger.Println("Error reading:", err.Error())
 				}
 				return
 			}
 			data := buf[:n]
 			msg, err := ParseMessage(string(data))
 			if err != nil {
-				mc.logger.Fatal(err)
+				nrw.logger.Fatal(err)
 			}
-			mc.receive <- msg
+			nrw.receive <- msg
 
 		}
 	}
