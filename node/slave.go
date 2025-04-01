@@ -39,13 +39,18 @@ func (s *Slave) NewMasterConnection(dest string, destPort string) {
 		return
 	}
 
-	s.NetworkRW = *comms.NewNetworkRW(
+	newNetRW := comms.NewNetworkRW(
 		srcAddr,
 		desAddr,
 		strconv.Itoa(s.id),
 		5*time.Second,
 		s.Logger,
 	)
+	if newNetRW == nil {
+		s.Logger.Fatal("error - failed to create new NewNetworkRW")
+	}
+
+	s.NetworkRW = *newNetRW
 }
 
 func NewSlave(cfg config.Node) *Slave {

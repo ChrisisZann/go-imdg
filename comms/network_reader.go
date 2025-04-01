@@ -66,35 +66,42 @@ func (nr *NetworkReader) Listen(ctx context.Context, receiveChannel chan *Messag
 	}
 	defer ln.Close()
 
-	// Start message Listener decoder
+	// Start the message listener decoder
 	go nr.receiveDecoder(ctx, receiveChannel)
 
-	// Listen on network
+	// Log the listener start
 	nr.logger.Println("Listening on ", nr.addr.String())
+
 	for {
+		// Create a channel to signal that we should stop listening
+		errChan := make(chan error, 1)
+
+		// Attempt to accept a connection in a separate goroutine
+		go func() {
+			conn, err := ln.Accept()
+			if err != nil {
+				errChan <- err
+				return
+			}
+
+			// Handle the connection
+			go nr.handleConnection(ctx, conn)
+		}()
 
 		select {
 		case <-ctx.Done():
-			nr.logger.Println("ctx cancelled : stopping nr Listen", ctx.Err())
-			if err = ln.Close(); err != nil {
-				nr.logger.Println("error - failed to close listener")
-			}
-
+			// Context cancelled: stop listening
+			nr.logger.Println("Context cancelled: stopping Listen", ctx.Err())
 			return
-
-		default:
-
-			conn, err := ln.Accept()
-			if err != nil {
-				if ctx.Err() != nil {
-					// If the context was cancelled, stop accepting connections
-					nr.logger.Println("Listener stopped due to context cancellation")
-					return
-				}
-				panic(err) // Unexpected error, panic
+		case err := <-errChan:
+			// If Accept() fails due to context cancellation or other error, stop listening
+			if err != nil && ctx.Err() == nil {
+				// Unexpected error, panic
+				panic(err)
 			}
-
-			go nr.handleConnection(ctx, conn)
+			// If error was due to context cancellation, exit the listener
+			nr.logger.Println("Listener stopped due to error:", err)
+			return
 		}
 	}
 }

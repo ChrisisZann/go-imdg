@@ -41,6 +41,7 @@ func NewNetworkRW(src, dest NodeAddr, suid string, hbInterval time.Duration, l *
 
 	newConn, err := net.Dial(dest.Network(), dest.String())
 	if err != nil {
+		l.Println("error - ", err)
 		return nil
 	}
 
@@ -149,7 +150,7 @@ func (nrw *NetworkRW) Listen() {
 	// Listen on Network
 	nrw.logger.Println("Listening on ", nrw.addr.String())
 	for {
-		
+
 		conn, err := ln.Accept()
 		if err != nil {
 			panic(err)
