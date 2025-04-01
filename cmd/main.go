@@ -16,8 +16,6 @@ func main() {
 
 	flag.Parse()
 
-	fmt.Println(*cfg)
-
 	n := config.New(*cfg)
 
 	if strings.Compare(n.NodeType, "master") == 0 {
@@ -29,7 +27,7 @@ func main() {
 
 		// Connection to master
 		s.NewMasterConnection("localhost", "3333")
-		fmt.Println("TESTING2:", s.MasterConnection)
+		fmt.Println("TESTING2:", s.NetworkRW)
 
 		//
 		go s.ReceiveHandler()
@@ -47,7 +45,7 @@ func main() {
 			if err != nil {
 				log.Fatalln("Failed to create new payload")
 			}
-			s.MasterConnection.SendPayload(p)
+			s.NetworkRW.SendPayload(p)
 		}
 
 		// s.MasterConnection.Send <- s.PrepareMsg(comms.NewPayload("Hello", comms.PayloadType(0)))

@@ -14,7 +14,7 @@ type Master struct {
 	id int
 
 	config.Node
-	comms.MasterListener
+	comms.NetworkListener
 	Receiver chan *comms.Message
 
 	slaveTopology map[int]*netSlave
@@ -22,7 +22,7 @@ type Master struct {
 }
 
 type netSlave struct {
-	connection *comms.SlaveConnection
+	connection *comms.NetworkWriter
 	*heartbeat
 }
 
@@ -78,7 +78,7 @@ func NewMaster(cfg config.Node) *Master {
 	return &Master{
 		id:   os.Getpid(),
 		Node: cfg,
-		MasterListener: *comms.NewMasterListener(
+		NetworkListener: *comms.NewMasterListener(
 			newAddr,
 			cfg.Logger,
 			10*time.Second,
@@ -107,15 +107,15 @@ func (m *Master) ReceiveHandler() {
 
 	for msg := range m.Receiver {
 		m.Logger.Printf("Received Message: <%s>\n", msg)
-		m.Logger.Println("Sender:", msg.ReadSenderID())
+		// m.Logger.Println("Sender:", msg.ReadSenderID())
 
 		if !m.exists_slave(msg.ReadSenderID()) {
 			m.Logger.Println("Received message from:", msg.ReadDest())
 			m.Logger.Println("i am :", m.Hostname+":"+m.LPort)
 			m.addSlave(msg.ReadSender(), msg.ReadSenderID())
 		} else {
-			m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
-			m.Logger.Println("Received Payload Data:", msg.ReadPayloadData())
+			// m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
+			// m.Logger.Println("Received Payload Data:", msg.ReadPayloadData())
 
 			// Message Decoder
 			if msg.GetPayloadType() == comms.StringToPayloadType("cmd") {

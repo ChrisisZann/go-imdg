@@ -1,7 +1,9 @@
 package comms
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -11,12 +13,12 @@ import (
 )
 
 // Master Connection support 2-way communication
-type MasterConnection struct {
+type NetworkRW struct {
 	addr     NodeAddr
 	sendAddr NodeAddr
+	conn     net.Conn
 
-	id     int
-	header string
+	id int
 
 	send    chan *Message
 	receive chan *Message
@@ -26,18 +28,27 @@ type MasterConnection struct {
 	logger *log.Logger
 }
 
-func NewMasterConnection(src, dest NodeAddr, suid string, hbInterval time.Duration, l *log.Logger) *MasterConnection {
+func NewMasterConnection(src, dest NodeAddr, suid string, hbInterval time.Duration, l *log.Logger) *NetworkRW {
 	i_suid, err := strconv.Atoi(suid)
 	if err != nil {
 		l.Fatalln("Failed to convert suid to int")
 		return nil
 	}
 
-	return &MasterConnection{
+	if strings.Compare(dest.String(), "") == 0 {
+		l.Println("error - Cannot create master conn, Destination is not set :", suid)
+	}
+
+	newConn, err := net.Dial(dest.Network(), dest.String())
+	if err != nil {
+		return nil
+	}
+
+	return &NetworkRW{
 		addr:              src,
 		sendAddr:          dest,
+		conn:              newConn,
 		id:                i_suid,
-		header:            CompileHeader(src.String(), suid, dest.String()),
 		send:              make(chan *Message, 10),
 		receive:           make(chan *Message, 10),
 		heartbeatInterval: hbInterval,
@@ -45,11 +56,11 @@ func NewMasterConnection(src, dest NodeAddr, suid string, hbInterval time.Durati
 	}
 }
 
-func (mc MasterConnection) GetID() int {
+func (mc NetworkRW) GetID() int {
 	return mc.id
 }
 
-func (mc MasterConnection) PrepareMsg(p *Payload) *Message {
+func (mc NetworkRW) PrepareMsg(p *Payload) *Message {
 	return &Message{
 		source:      mc.addr,
 		suid:        os.Getpid(),
@@ -62,15 +73,15 @@ func (mc MasterConnection) PrepareMsg(p *Payload) *Message {
 // func SendData
 // func SendDef
 
-func (mc *MasterConnection) SendPayload(p *Payload) {
+func (mc *NetworkRW) SendPayload(p *Payload) {
 	mc.send <- mc.PrepareMsg(p)
 }
 
-func (mc *MasterConnection) SendMsg(msg *Message) {
+func (mc *NetworkRW) SendMsg(msg *Message) {
 	mc.send <- msg
 }
 
-func (mc *MasterConnection) StartMasterConnectionLoop(c chan *Payload) {
+func (mc *NetworkRW) StartMasterConnectionLoop(c chan *Payload) {
 
 	go mc.sendLoop()
 	go mc.receiveDecoder(c)
@@ -79,7 +90,7 @@ func (mc *MasterConnection) StartMasterConnectionLoop(c chan *Payload) {
 	// mc.listen()
 }
 
-func (mc MasterConnection) sendHeartbeat() {
+func (mc NetworkRW) sendHeartbeat() {
 	for {
 		p, err := NewPayload("alive", "cmd")
 		if err != nil {
@@ -90,34 +101,25 @@ func (mc MasterConnection) sendHeartbeat() {
 	}
 }
 
-func (mc *MasterConnection) sendLoop() {
+func (mc *NetworkRW) sendLoop() {
 
 	for msg := range mc.send {
 
 		fmt.Println("SENDING")
 
-		if strings.Compare(mc.sendAddr.String(), "") == 0 {
-			mc.logger.Fatal("Destination is not set")
-		}
-
-		conn, err := net.Dial("tcp", mc.sendAddr.String())
-		if err != nil {
-			mc.logger.Fatal("Failed to connect to "+mc.sendAddr.String(), "\n", err)
-		}
-
 		compiledMsg, err := msg.Compile()
 		if err != nil {
 			mc.logger.Fatal("Failed to compile message:", err)
 		}
-		_, err = conn.Write([]byte(compiledMsg))
+
+		_, err = mc.conn.Write([]byte(compiledMsg))
 		if err != nil {
 			mc.logger.Fatal("Failed to write")
 		}
-		conn.Close()
 	}
 }
 
-func (mc *MasterConnection) receiveDecoder(c chan<- *Payload) {
+func (mc *NetworkRW) receiveDecoder(c chan<- *Payload) {
 	for msg := range mc.receive {
 
 		if msg.payload.ptype == network {
@@ -134,38 +136,60 @@ func (mc *MasterConnection) receiveDecoder(c chan<- *Payload) {
 	}
 }
 
-func (mc *MasterConnection) Listen() {
+func (mc *NetworkRW) Listen() {
 	ln, err := net.Listen("tcp", mc.addr.String())
 	if err != nil {
 		panic(err)
 	}
 	defer ln.Close()
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Listen on Network
 	mc.logger.Println("Listening on ", mc.addr.String())
 	for {
-
 		conn, err := ln.Accept()
 		if err != nil {
 			panic(err)
 		}
-		go mc.handleConnection(conn)
+		go mc.handleConnection(ctx, conn)
 	}
 }
 
-func (mc *MasterConnection) handleConnection(conn net.Conn) {
+func (mc *NetworkRW) handleConnection(ctx context.Context, conn net.Conn) {
+	defer conn.Close()
+
+	mc.logger.Println("starting new network reader...")
+
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 
-	//should make loop? to read multiple messages?
+	for {
 
-	_, err := conn.Read(buf)
-	if err != nil {
-		mc.logger.Println("Error reading:", err.Error())
+		select {
+		case <-ctx.Done():
+			mc.logger.Println("context cancelled this handler", ctx.Err())
+			mc.logger.Println("stopping handler...")
+			return
+		default:
+
+			n, err := conn.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					mc.logger.Println("Connection closed by master")
+				} else {
+					mc.logger.Println("Error reading:", err.Error())
+				}
+				return
+			}
+			data := buf[:n]
+			msg, err := ParseMessage(string(data))
+			if err != nil {
+				mc.logger.Fatal(err)
+			}
+			mc.receive <- msg
+
+		}
 	}
-	msg, err := ParseMessage(string(buf))
-	if err != nil {
-		mc.logger.Fatal(err)
-	}
-	mc.receive <- msg
-	conn.Close()
 }

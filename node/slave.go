@@ -14,7 +14,7 @@ type Slave struct {
 	id int
 
 	config.Node
-	comms.MasterConnection
+	comms.NetworkRW
 
 	Receiver  chan *comms.Payload
 	DataStore *data.MemPage // Use MemPage as the data store
@@ -39,7 +39,7 @@ func (s *Slave) NewMasterConnection(dest string, destPort string) {
 		return
 	}
 
-	s.MasterConnection = *comms.NewMasterConnection(
+	s.NetworkRW = *comms.NewMasterConnection(
 		srcAddr,
 		desAddr,
 		strconv.Itoa(s.id),

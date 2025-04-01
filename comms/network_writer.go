@@ -10,9 +10,10 @@ import (
 )
 
 // Slave Connection support outbound communication only!
-type SlaveConnection struct {
+type NetworkWriter struct {
 	addr     NodeAddr
 	sendAddr NodeAddr
+	conn     net.Conn
 
 	id int
 
@@ -21,27 +22,37 @@ type SlaveConnection struct {
 	logger *log.Logger
 }
 
-func NewSlaveConnection(src, dest NodeAddr, suid string, l *log.Logger) *SlaveConnection {
+func NewSlaveConnection(src, dest NodeAddr, suid string, l *log.Logger) *NetworkWriter {
 	i_suid, err := strconv.Atoi(suid)
 	if err != nil {
 		l.Fatalln("Failed to convert suid to int")
 		return nil
 	}
 
-	return &SlaveConnection{
+	if strings.Compare(dest.String(), "") == 0 {
+		l.Println("error - Cannot create slave conn, Destination is not set :", suid)
+	}
+
+	newConn, err := net.Dial(dest.Network(), dest.String())
+	if err != nil {
+		return nil
+	}
+
+	return &NetworkWriter{
 		addr:     src,
 		sendAddr: dest,
+		conn:     newConn,
 		id:       i_suid,
 		send:     make(chan *Message, 10),
 		logger:   l,
 	}
 }
 
-func (cb SlaveConnection) GetID() int {
+func (cb NetworkWriter) GetID() int {
 	return cb.id
 }
 
-func (cb SlaveConnection) PrepareMsg(p *Payload) *Message {
+func (cb NetworkWriter) PrepareMsg(p *Payload) *Message {
 	return &Message{
 		source:      cb.addr,
 		suid:        os.Getpid(),
@@ -50,7 +61,7 @@ func (cb SlaveConnection) PrepareMsg(p *Payload) *Message {
 	}
 }
 
-func (cb *SlaveConnection) SendPing() {
+func (cb *NetworkWriter) SendPing() {
 	p, err := NewPayload("ping", "cmd")
 	if err != nil {
 		cb.logger.Panicln("failed to create ping payload")
@@ -58,19 +69,19 @@ func (cb *SlaveConnection) SendPing() {
 	cb.send <- cb.PrepareMsg(p)
 }
 
-func (cb *SlaveConnection) SendPayload(p *Payload) {
+func (cb *NetworkWriter) SendPayload(p *Payload) {
 	cb.send <- cb.PrepareMsg(p)
 }
 
-func (cb *SlaveConnection) SendMsg(msg *Message) {
+func (cb *NetworkWriter) SendMsg(msg *Message) {
 	cb.send <- msg
 }
 
-func (cb *SlaveConnection) OpenSendChannel() {
+func (cb *NetworkWriter) OpenSendChannel() {
 	go cb.sendLoop()
 }
 
-func (cb *SlaveConnection) sendLoop() {
+func (cb *NetworkWriter) sendLoop() {
 
 	for msg := range cb.send {
 
