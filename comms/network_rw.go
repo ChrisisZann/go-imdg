@@ -149,6 +149,7 @@ func (nrw *NetworkRW) Listen() {
 	// Listen on Network
 	nrw.logger.Println("Listening on ", nrw.addr.String())
 	for {
+		
 		conn, err := ln.Accept()
 		if err != nil {
 			panic(err)
@@ -169,8 +170,7 @@ func (nrw *NetworkRW) handleConnection(ctx context.Context, conn net.Conn) {
 
 		select {
 		case <-ctx.Done():
-			nrw.logger.Println("context cancelled this handler", ctx.Err())
-			nrw.logger.Println("stopping handler...")
+			nrw.logger.Println("ctx cancelled : stopping nrw handleConnection", ctx.Err())
 			return
 		default:
 

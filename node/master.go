@@ -62,7 +62,7 @@ func (m *Master) Start() {
 
 	m.initMasterCommands()
 
-	m.wg.Add(3)
+	m.wg.Add(4)
 	go func() {
 		defer m.wg.Done()
 		m.ReceiveHandler()
@@ -75,8 +75,13 @@ func (m *Master) Start() {
 		defer m.wg.Done()
 		m.userInput()
 	}()
+	go func() {
+		defer m.wg.Done()
+		m.Listen(m.ctx, m.Receiver)
+	}()
 
-	m.Listen(m.ctx, m.Receiver)
+	m.wg.Wait()
+
 }
 
 func (m *Master) Stop() {
@@ -84,9 +89,6 @@ func (m *Master) Stop() {
 
 	// Cancel the context to signal all goroutines to stop
 	m.cancel()
-
-	// Close the Receiver channel to unblock ReceiveHandler
-	close(m.Receiver)
 
 	m.topologyLock.Lock()
 	for _, slave := range m.slaveTopology {
@@ -96,6 +98,9 @@ func (m *Master) Stop() {
 
 	// Wait for all goroutines to finish
 	m.wg.Wait()
+
+	// Close the Receiver channel to unblock ReceiveHandler
+	close(m.Receiver)
 
 	m.Logger.Println("Master successfully shut down")
 }
@@ -120,7 +125,10 @@ func (m *Master) ReceiveHandler() {
 			if msg.ReadSenderID() == 0 {
 				// Internal message
 				if strings.Compare(msg.ReadPayloadData(), "stop") == 0 {
-					m.Stop()
+					go m.Stop()
+
+					//i think i need this return, because stop will return here and miss the signal??
+					// return
 				}
 			} else if !m.exists_slave(msg.ReadSenderID()) {
 				m.Logger.Println("Received message from:", msg.ReadDest())
@@ -139,30 +147,43 @@ func (m *Master) ReceiveHandler() {
 				}
 			}
 		case <-m.ctx.Done():
+			m.Logger.Println("ctx cancelled : stopping ReceiveHandler", m.ctx.Err())
+
 			// Handle context cancellation gracefully
-			if err := m.ctx.Err(); err != nil {
-				if err == context.Canceled {
-					m.Logger.Println("ReceiveHandler: Context canceled, shutting down...")
-				} else {
-					m.Logger.Println("ReceiveHandler: Unexpected context error:", err)
-				}
-			}
+			//if err := m.ctx.Err(); err != nil {
+			//	if err == context.Canceled {
+			//		m.Logger.Println("ReceiveHandler: Context canceled, shutting down...")
+			//	} else {
+			//		m.Logger.Println("ReceiveHandler: Unexpected context error:", err)
+			//	}
+			//}
 			return
 		}
 	}
 }
 
 func (m *Master) userInput() {
+	inputChan := make(chan string)
+	go func() {
+		var userInput string
+		for {
+			fmt.Print("Enter command:")
+			fmt.Scan(&userInput)
+			inputChan <- userInput
+			if strings.Compare(userInput, "stop") == 0 {
+				break
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-m.ctx.Done():
-			m.Logger.Println("Stopping user input routine...")
-			return
-		default:
-			var userInput string
-			fmt.Print("Enter command:")
-			fmt.Scan(&userInput)
+			m.Logger.Println("ctx cancelled : stopping userInput", m.ctx.Err())
+			close(inputChan)
 
+			return
+		case userInput := <-inputChan:
 			p, err := comms.NewPayload(userInput, "cmd")
 			if err != nil {
 				m.Logger.Println("error - cant create payload from user")

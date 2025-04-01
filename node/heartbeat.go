@@ -32,13 +32,13 @@ func (m *Master) checkHeartbeatLoop() {
 		select {
 		case <-ticker.C:
 			for id, slave := range m.slaveTopology {
-				if time.Since(slave.lastPing) > DEFAULT_FREQUENCY { // 30-second timeout
+				if time.Since(slave.lastPing) > slave.checkFrequency { // 30-second timeout
 					m.Logger.Printf("Slave %d is unresponsive. Marking as inactive.\n", id)
 					m.updateHeartbeat(id, false)
 				}
 			}
 		case <-m.ctx.Done():
-			m.Logger.Println("Closing checkHeartbeatLoop...")
+			m.Logger.Println("ctx cancelled : stopping checkHeartbeatLoop", m.ctx.Err())
 			return
 		}
 	}
