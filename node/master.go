@@ -21,6 +21,7 @@ type Master struct {
 	Receiver chan *comms.Message
 
 	// Topology
+	// TODO I need to change the map to hold keys of netSlave
 	slaveTopology map[int]*netSlave
 	topologyLock  sync.RWMutex
 
@@ -30,6 +31,7 @@ type Master struct {
 	wg     sync.WaitGroup
 }
 
+// Instantiate new master node
 func NewMaster(cfg config.Node) *Master {
 
 	cfg.Logger.Println("Setting up new master...")
@@ -58,6 +60,7 @@ func NewMaster(cfg config.Node) *Master {
 	}
 }
 
+// Start master node go-routines
 func (m *Master) Start() {
 
 	m.initMasterCommands()
@@ -81,9 +84,9 @@ func (m *Master) Start() {
 	}()
 
 	m.wg.Wait()
-
 }
 
+// Stops gracefully master node
 func (m *Master) Stop() {
 	m.Logger.Println("Stopping Master...")
 
@@ -105,12 +108,14 @@ func (m *Master) Stop() {
 	m.Logger.Println("Master successfully shut down")
 }
 
+// Broadcast payload to all slaves
 func (m *Master) BroadcastToSlaves(p *comms.Payload) {
 	for i := range m.slaveTopology {
 		m.slaveTopology[i].connection.SendPayload(p)
 	}
 }
 
+// Decode incoming messages
 func (m *Master) ReceiveHandler() {
 	for {
 		select {
@@ -162,6 +167,7 @@ func (m *Master) ReceiveHandler() {
 	}
 }
 
+// Receive direct messages from stdin
 func (m *Master) userInput() {
 	inputChan := make(chan string)
 	go func() {
@@ -170,6 +176,8 @@ func (m *Master) userInput() {
 			fmt.Print("Enter command:")
 			fmt.Scan(&userInput)
 			inputChan <- userInput
+
+			// TBD : if i really need this check, why i need the goroutine??
 			if strings.Compare(userInput, "stop") == 0 {
 				break
 			}
@@ -204,16 +212,19 @@ func (m *Master) userInput() {
 
 //========================================================================================================================
 
+// internal slave representation for master node
 type netSlave struct {
 	connection *comms.NetworkWriter
 	*heartbeat
 }
 
+// Returns true if slave already exists in topology
 func (m *Master) exists_slave(cmpID int) bool {
 	_, ok := m.slaveTopology[cmpID]
 	return ok
 }
 
+// Adds new slave in topology and open communication
 func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
 	m.topologyLock.Lock()
 

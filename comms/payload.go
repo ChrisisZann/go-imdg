@@ -10,6 +10,7 @@ import (
 
 type PayloadType int
 
+// placeholder types mostly, for later development
 const (
 	cmd PayloadType = iota
 	dat

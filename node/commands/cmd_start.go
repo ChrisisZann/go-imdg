@@ -7,6 +7,8 @@ type StartCommand struct{}
 
 func (c *StartCommand) Execute() error {
 	fmt.Println("Executing Start Command")
+	// TODO
+
 	return nil
 }
 
