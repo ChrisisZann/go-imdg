@@ -93,8 +93,3 @@ func ParseMessage(input string) (*Message, error) {
 		// payload:     payload,
 	}, nil
 }
-
-// <source|suid|dest|payload>
-func CompileHeader(source, suid, dest string) string {
-	return source + "|" + suid + "|" + dest + "|"
-}

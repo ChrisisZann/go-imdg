@@ -2,8 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"go-imdg/comms"
 	"go-imdg/config"
 	"go-imdg/data"
 	"go-imdg/node"
@@ -24,31 +22,8 @@ func main() {
 
 	} else if strings.Compare(n.NodeType, "slave") == 0 {
 		s := node.NewSlave(*n)
+		s.Start()
 
-		// Connection to master
-		s.NewMasterConnection("localhost", "3333")
-		// fmt.Println("TESTING2:", s.NetworkRW)
-
-		//
-		go s.ReceiveHandler()
-		s.StartMasterConnectionLoop(s.Receiver)
-
-		go s.Listen()
-
-		var Message string
-		for {
-			fmt.Print("Enter Message:")
-			fmt.Scan(&Message)
-
-			// s.MasterConnection.SendMsg(s.PrepareMsg(comms.NewPayload(Message, comms.PayloadType(0))))
-			p, err := comms.NewPayload(Message, "cmd")
-			if err != nil {
-				log.Fatalln("Failed to create new payload")
-			}
-			s.NetworkRW.SendPayload(p)
-		}
-
-		// s.MasterConnection.Send <- s.PrepareMsg(comms.NewPayload("Hello", comms.PayloadType(0)))
 	} else if strings.Compare(n.NodeType, "tester") == 0 {
 		var s data.MemPage
 		s.Init()

@@ -1,3 +1,6 @@
 Q: MasterConnection handleConnection : make loop to read multiple messages in sequence?
 
 -> use Context for pass request-scoped values
+
+-> Convert comms to close Conn after received message
+with option to keep open if data is transmitted

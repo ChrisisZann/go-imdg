@@ -53,6 +53,10 @@ func (nw NetworkWriter) GetID() int {
 	return nw.id
 }
 
+func (nw NetworkWriter) GetAddr() NodeAddr {
+	return nw.addr
+}
+
 func (nw NetworkWriter) PrepareMsg(p *Payload) *Message {
 	return &Message{
 		source:      nw.addr,

@@ -61,6 +61,10 @@ func (nrw NetworkRW) GetID() int {
 	return nrw.id
 }
 
+func (nrw NetworkRW) GetAddr() NodeAddr {
+	return nrw.addr
+}
+
 func (nrw NetworkRW) PrepareMsg(p *Payload) *Message {
 	return &Message{
 		source:      nrw.addr,
@@ -82,10 +86,9 @@ func (nrw *NetworkRW) SendMsg(msg *Message) {
 	nrw.send <- msg
 }
 
-func (nrw *NetworkRW) StartMasterConnectionLoop(c chan *Payload) {
+func (nrw *NetworkRW) StartMasterConnectionLoop(c chan *Message) {
 
 	go nrw.sendLoop()
-	go nrw.receiveDecoder(c)
 	go nrw.sendHeartbeat()
 
 	// nrw.listen()
@@ -120,42 +123,71 @@ func (nrw *NetworkRW) sendLoop() {
 	}
 }
 
-func (nrw *NetworkRW) receiveDecoder(c chan<- *Payload) {
-	for msg := range nrw.receive {
+func (nrw *NetworkRW) receiveDecoder(ctx context.Context, c chan<- *Message) {
 
-		if msg.payload.ptype == network {
-			nrw.logger.Println("Received network related Message:", msg.payload.ReadData())
+	for {
+		select {
+		case <-ctx.Done():
+			nrw.logger.Println("ctx cancelled : stopping nrw receiveDecoder", ctx.Err())
+			return
+		case msg := <-nrw.receive:
+			if msg.payload.ptype == network {
+				nrw.logger.Println("Received network related Message:", msg.payload.ReadData())
 
-			// TODO handle network changes
-			// -----------------------------------
+				// TODO handle network changes
+				// -----------------------------------
 
-			// -----------------------------------
+				// -----------------------------------
 
-		} else {
-			c <- msg.payload
+			} else {
+				c <- msg
+			}
 		}
 	}
 }
 
-func (nrw *NetworkRW) Listen() {
+func (nrw *NetworkRW) Listen(ctx context.Context, receiveChan chan *Message) {
 	ln, err := net.Listen("tcp", nrw.addr.String())
 	if err != nil {
 		panic(err)
 	}
 	defer ln.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	go nrw.receiveDecoder(ctx, receiveChan)
 
 	// Listen on Network
 	nrw.logger.Println("Listening on ", nrw.addr.String())
-	for {
 
+	// Create a channel to signal that we should stop listening
+	errChan := make(chan error, 1)
+
+	go func() {
 		conn, err := ln.Accept()
 		if err != nil {
-			panic(err)
+			errChan <- err
+			return
 		}
 		go nrw.handleConnection(ctx, conn)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			nrw.logger.Println("ctx cancelled : stopping nrw Listen", ctx.Err())
+			ln.Close()
+			nrw.logger.Println("Listener closed")
+
+			return
+		case err := <-errChan:
+			// If Accept() fails due to context cancellation or other error, stop listening
+			if err != nil && ctx.Err() == nil {
+				// Unexpected error, panic
+				panic(err)
+			}
+			// If error was due to context cancellation, exit the listener
+			nrw.logger.Println("Listener stopped due to error:", err)
+			return
+		}
 	}
 }
 

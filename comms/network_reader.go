@@ -66,7 +66,7 @@ func (nr *NetworkReader) Listen(ctx context.Context, receiveChannel chan *Messag
 	}
 	defer ln.Close()
 
-	// Start the message listener decoder
+	// Start the message listener internal decoder
 	go nr.receiveDecoder(ctx, receiveChannel)
 
 	// Log the listener start
@@ -92,6 +92,7 @@ func (nr *NetworkReader) Listen(ctx context.Context, receiveChannel chan *Messag
 		case <-ctx.Done():
 			// Context cancelled: stop listening
 			nr.logger.Println("Context cancelled: stopping Listen", ctx.Err())
+			ln.Close() //THIS IS IMPORTANT!!
 			return
 		case err := <-errChan:
 			// If Accept() fails due to context cancellation or other error, stop listening
