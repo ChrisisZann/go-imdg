@@ -50,7 +50,7 @@ func NewMaster(cfg config.Node) *Master {
 		Node: cfg,
 		NetworkReader: *comms.NewNetworkReader(
 			newAddr,
-			cfg.Logger,
+			cfg.RxLogger,
 			10*time.Second,
 		),
 		Receiver:      make(chan *comms.Message, 10),
@@ -120,12 +120,13 @@ func (m *Master) ReceiveHandler() {
 	for {
 		select {
 		case msg, ok := <-m.Receiver:
+			// m.RxLogger.Println("Received:", msg)
 			if !ok {
 				m.Logger.Println("master receive channel closed, exiting handler...")
 				return
 			}
 
-			m.Logger.Printf("Received Message: <%s>\n", msg)
+			// m.Logger.Printf("Received Message: <%s>\n", msg)
 			// m.Logger.Println("Sender:", msg.ReadSenderID())
 			if msg.ReadSenderID() == 0 {
 				// Internal message
@@ -136,8 +137,8 @@ func (m *Master) ReceiveHandler() {
 					// return
 				}
 			} else if !m.exists_slave(msg.ReadSenderID()) {
-				m.Logger.Println("Received message from:", msg.ReadDest())
-				m.Logger.Println("I am:", m.Hostname+":"+m.LPort)
+				m.Logger.Println("Received message from new slave:", msg.ReadDest())
+				// m.Logger.Println("I am:", m.Hostname+":"+m.LPort)
 				m.addSlave(msg.ReadSender(), msg.ReadSenderID())
 			} else {
 				// m.Logger.Println("Received Payload Type:", msg.ReadPayloadType())
@@ -239,6 +240,7 @@ func (m *Master) addSlave(dest comms.NodeAddr, sid int) {
 			dest,
 			strconv.Itoa(m.id),
 			m.Logger,
+			m.TxLogger,
 		),
 		heartbeat: newHeartbeat(),
 	}

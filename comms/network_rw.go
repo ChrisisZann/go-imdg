@@ -2,7 +2,6 @@ package comms
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -25,10 +24,11 @@ type NetworkRW struct {
 
 	heartbeatInterval time.Duration
 
-	logger *log.Logger
+	logger   *log.Logger
+	txLogger *log.Logger
 }
 
-func NewNetworkRW(src, dest NodeAddr, suid string, hbInterval time.Duration, l *log.Logger) *NetworkRW {
+func NewNetworkRW(src, dest NodeAddr, suid string, hbInterval time.Duration, l, tx *log.Logger) *NetworkRW {
 	i_suid, err := strconv.Atoi(suid)
 	if err != nil {
 		l.Fatalln("Failed to convert suid to int")
@@ -39,21 +39,15 @@ func NewNetworkRW(src, dest NodeAddr, suid string, hbInterval time.Duration, l *
 		l.Println("error - Cannot create master conn, Destination is not set :", suid)
 	}
 
-	newConn, err := net.Dial(dest.Network(), dest.String())
-	if err != nil {
-		l.Println("error - ", err)
-		return nil
-	}
-
 	return &NetworkRW{
 		addr:              src,
 		sendAddr:          dest,
-		conn:              newConn,
 		id:                i_suid,
 		send:              make(chan *Message, 10),
 		receive:           make(chan *Message, 10),
 		heartbeatInterval: hbInterval,
 		logger:            l,
+		txLogger:          tx,
 	}
 }
 
@@ -109,17 +103,23 @@ func (nrw *NetworkRW) sendLoop() {
 
 	for msg := range nrw.send {
 
-		fmt.Println("SENDING")
+		nrw.txLogger.Println("SENDING:", msg)
+
+		newConn, err := net.Dial(msg.destination.Network(), msg.destination.String())
+		if err != nil {
+			nrw.logger.Println("error - ", err)
+		}
 
 		compiledMsg, err := msg.Compile()
 		if err != nil {
 			nrw.logger.Fatal("Failed to compile message:", err)
 		}
 
-		_, err = nrw.conn.Write([]byte(compiledMsg))
+		_, err = newConn.Write([]byte(compiledMsg))
 		if err != nil {
-			nrw.logger.Fatal("Failed to write")
+			nrw.logger.Fatal("Failed to write:", err)
 		}
+		newConn.Close()
 	}
 }
 
@@ -158,35 +158,23 @@ func (nrw *NetworkRW) Listen(ctx context.Context, receiveChan chan *Message) {
 	// Listen on Network
 	nrw.logger.Println("Listening on ", nrw.addr.String())
 
-	// Create a channel to signal that we should stop listening
-	errChan := make(chan error, 1)
-
-	go func() {
-		conn, err := ln.Accept()
-		if err != nil {
-			errChan <- err
-			return
-		}
-		go nrw.handleConnection(ctx, conn)
-	}()
-
 	for {
+
 		select {
 		case <-ctx.Done():
-			nrw.logger.Println("ctx cancelled : stopping nrw Listen", ctx.Err())
-			ln.Close()
-			nrw.logger.Println("Listener closed")
-
+			// Context cancelled: stop listening
+			nrw.logger.Println("Context cancelled: stopping Listen", ctx.Err())
+			ln.Close() //THIS IS IMPORTANT!!
 			return
-		case err := <-errChan:
-			// If Accept() fails due to context cancellation or other error, stop listening
-			if err != nil && ctx.Err() == nil {
-				// Unexpected error, panic
-				panic(err)
+		default:
+			conn, err := ln.Accept()
+			if err != nil {
+				nrw.logger.Println("Error accepting connection:", err)
+				return
 			}
-			// If error was due to context cancellation, exit the listener
-			nrw.logger.Println("Listener stopped due to error:", err)
-			return
+
+			// Handle the connection
+			go nrw.handleConnection(ctx, conn)
 		}
 	}
 }

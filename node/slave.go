@@ -49,6 +49,7 @@ func (s *Slave) NewNetworkRW(dest string, destPort string) {
 		strconv.Itoa(s.id),
 		5*time.Second,
 		s.Logger,
+		s.TxLogger,
 	)
 	if newNetRW == nil {
 		s.Logger.Fatal("error - failed to create new NewNetworkRW")
@@ -134,9 +135,9 @@ func (s *Slave) ReceiveHandler() {
 			str_ptype := msg.ReadPayloadType()
 			str_savetype := comms.StringToPayloadType("save").String()
 
-			fmt.Println("str_ptype:", str_ptype)
-			fmt.Println("str_savetype:", str_savetype)
-			fmt.Println("msg.ReadSenderID()", msg.ReadSenderID())
+			// fmt.Println("str_ptype:", str_ptype)
+			// fmt.Println("str_savetype:", str_savetype)
+			// fmt.Println("msg.ReadSenderID()", msg.ReadSenderID())
 
 			if msg.ReadSenderID() == 0 {
 				//Internal message handling

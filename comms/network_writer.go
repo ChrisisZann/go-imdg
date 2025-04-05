@@ -18,10 +18,11 @@ type NetworkWriter struct {
 
 	send chan *Message
 
-	logger *log.Logger
+	logger   *log.Logger
+	txLogger *log.Logger
 }
 
-func NewNetworkWriter(src, dest NodeAddr, suid string, l *log.Logger) *NetworkWriter {
+func NewNetworkWriter(src, dest NodeAddr, suid string, l, tx *log.Logger) *NetworkWriter {
 	i_suid, err := strconv.Atoi(suid)
 	if err != nil {
 		l.Fatalln("Failed to convert suid to int")
@@ -44,6 +45,7 @@ func NewNetworkWriter(src, dest NodeAddr, suid string, l *log.Logger) *NetworkWr
 		id:       i_suid,
 		send:     make(chan *Message, 10),
 		logger:   l,
+		txLogger: tx,
 	}
 
 	return nw
@@ -90,7 +92,7 @@ func (nw *NetworkWriter) sendLoop() {
 
 	for msg := range nw.send {
 
-		// fmt.Println("SENDING")
+		nw.txLogger.Println("SENDING:", msg)
 
 		if strings.Compare(nw.sendAddr.String(), "") == 0 {
 			nw.logger.Fatal("Destination is not set")

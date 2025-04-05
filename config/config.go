@@ -13,6 +13,8 @@ var once sync.Once
 
 type Node struct {
 	Logger     *log.Logger
+	RxLogger   *log.Logger
+	TxLogger   *log.Logger
 	NodeType   string
 	Hostname   string
 	LPort      string
@@ -75,8 +77,18 @@ func LoadConfig(cfgFileName string) (Node, error) {
 	if err != nil {
 		log.Fatal("Failed to create log file", err)
 	}
+	rxLogFile, err := os.Create(ld + "/" + "RX_" + ln + ".log")
+	if err != nil {
+		log.Fatal("Failed to create log file", err)
+	}
+	txLogFile, err := os.Create(ld + "/" + "TX_" + ln + ".log")
+	if err != nil {
+		log.Fatal("Failed to create log file", err)
+	}
 
 	tempCfg.Logger = log.New(logFile, "", log.Ldate|log.Ltime|log.Lshortfile)
+	tempCfg.RxLogger = log.New(rxLogFile, "", log.Ldate|log.Ltime|log.Lshortfile)
+	tempCfg.TxLogger = log.New(txLogFile, "", log.Ldate|log.Ltime|log.Lshortfile)
 
 	if strings.Compare(tempCfg.NodeType, "worker") == 0 {
 		mc, ok := jsonMap["master_conn"].(string)

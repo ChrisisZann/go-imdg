@@ -43,7 +43,7 @@ func (nr *NetworkReader) receiveDecoder(ctx context.Context, c chan<- *Message) 
 
 		case msg := <-nr.receive:
 			if msg.payload.ptype == network {
-				nr.logger.Println("Received network related Message:", msg.payload.ReadData())
+				nr.logger.Println("Decoder: received network related msg:", msg.payload.ReadData())
 
 				// TODO handle network changes
 				// -----------------------------------
@@ -52,6 +52,7 @@ func (nr *NetworkReader) receiveDecoder(ctx context.Context, c chan<- *Message) 
 
 			} else {
 				// Send one level up
+				nr.logger.Println("Decoder : received message:", msg.String())
 				c <- msg
 			}
 		}
@@ -73,20 +74,6 @@ func (nr *NetworkReader) Listen(ctx context.Context, receiveChannel chan *Messag
 	nr.logger.Println("Listening on ", nr.addr.String())
 
 	for {
-		// Create a channel to signal that we should stop listening
-		errChan := make(chan error, 1)
-
-		// Attempt to accept a connection in a separate goroutine
-		go func() {
-			conn, err := ln.Accept()
-			if err != nil {
-				errChan <- err
-				return
-			}
-
-			// Handle the connection
-			go nr.handleConnection(ctx, conn)
-		}()
 
 		select {
 		case <-ctx.Done():
@@ -94,15 +81,15 @@ func (nr *NetworkReader) Listen(ctx context.Context, receiveChannel chan *Messag
 			nr.logger.Println("Context cancelled: stopping Listen", ctx.Err())
 			ln.Close() //THIS IS IMPORTANT!!
 			return
-		case err := <-errChan:
-			// If Accept() fails due to context cancellation or other error, stop listening
-			if err != nil && ctx.Err() == nil {
-				// Unexpected error, panic
-				panic(err)
+		default:
+			conn, err := ln.Accept()
+			if err != nil {
+				nr.logger.Println("Error accepting connection:", err)
+				return
 			}
-			// If error was due to context cancellation, exit the listener
-			nr.logger.Println("Listener stopped due to error:", err)
-			return
+
+			// Handle the connection
+			go nr.handleConnection(ctx, conn)
 		}
 	}
 }
@@ -115,36 +102,27 @@ func (nr *NetworkReader) handleConnection(ctx context.Context, conn net.Conn) {
 	// Make a buffer to hold incoming data.
 	buf := make([]byte, 1024)
 
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-
 	for {
+
 		select {
 		case <-ctx.Done():
-			nr.logger.Println("ctx cancelled : stopping nr handleConnection", ctx.Err())
+			nr.logger.Println("ctx cancelled : stopping nrw handleConnection", ctx.Err())
 			return
-
-		case <-ticker.C:
-			nr.logger.Println("iTS ALIVE!!!!")
-
 		default:
 
 			n, err := conn.Read(buf)
 			if err != nil {
 				if err == io.EOF {
-					nr.logger.Println("Connection closed by client")
+					nr.logger.Println("Connection closed by master")
 				} else {
 					nr.logger.Println("Error reading:", err.Error())
 				}
 				return
 			}
 			data := buf[:n]
-
-			nr.logger.Println("received in open conn:", conn.LocalAddr())
-
 			msg, err := ParseMessage(string(data))
 			if err != nil {
-				nr.logger.Println("error - ", err)
+				nr.logger.Fatal(err)
 			}
 			nr.receive <- msg
 		}
